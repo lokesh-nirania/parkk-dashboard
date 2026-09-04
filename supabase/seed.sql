@@ -15,6 +15,13 @@
 -- by hand instead — see setup.md.
 -- ============================================================================
 
+-- pgcrypto lives in the extensions schema, not public. The local stack puts
+-- that on the postgres role's search_path so crypt() and gen_salt() resolve on
+-- their own; a hosted connection does not, and the seed fails with
+-- "function gen_salt(unknown) does not exist". Naming both schemas here works
+-- in either place without pinning where the extension is installed.
+set search_path = public, extensions;
+
 do $$
 declare
   u record;

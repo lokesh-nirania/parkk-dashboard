@@ -67,6 +67,13 @@ function FillFields({
     : seat.person_id ? `manager:${seat.person_id}` : NEW;
   const [who, setWho] = useState(current);
 
+  // Leaving Trade blank is not a blank: the action falls back to whatever this
+  // person's own record says. So the placeholder has to be that trade and not a
+  // generic example, or the form is quietly promising something else.
+  const picked = workers.find((w) => `worker:${w.id}` === who) ?? null;
+  const inherited = who.startsWith('manager:') ? 'Project manager' : picked?.trade ?? null;
+  const override = seat.trade === 'Unassigned' ? '' : seat.trade;
+
   return (
     <>
       <Mini label="Who" error={fe.worker_name}>
@@ -100,15 +107,25 @@ function FillFields({
       <div className="grid grid-cols-2 gap-2">
         <Mini label="Trade">
           <input
+            // Keyed on the selection: an uncontrolled input reads defaultValue
+            // once, so without this it would keep a trade typed for somebody else.
+            key={who}
             name="trade" className={INPUT}
-            placeholder={who.startsWith('manager:') ? 'Project manager' : 'Blaster'}
-            defaultValue={seat.trade === 'Unassigned' ? '' : seat.trade}
+            placeholder={inherited ?? 'Blaster'}
+            defaultValue={override}
           />
         </Mini>
         <Mini label="Mobilises">
           <input type="date" name="mobilize_on" className={INPUT} defaultValue={seat.mobilize_on ?? ''} />
         </Mini>
       </div>
+      <p className="text-[10px] text-faint">
+        {inherited && !override
+          ? <>Blank records <span className="text-muted">{inherited}</span> — what their own record says. Type here only to override it for this job.</>
+          : who === NEW
+            ? 'Their trade on the new crew record. Blank leaves it unassigned.'
+            : 'Blank keeps whatever their own record says.'}
+      </p>
 
       <fieldset className="space-y-1.5 border-t border-line pt-2">
         <legend className="sr-only">What this seat needs</legend>
