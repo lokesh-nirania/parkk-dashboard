@@ -11,9 +11,13 @@
   agreed dates and crew size become a baseline that is never overwritten.
 - **Planning** — six workstreams running in parallel, each holding tasks, plus a
   crew list of seats. A seventh workstream can be added to any project from the UI.
-- **The crew list as seats** — added, filled, released, mid-job. Filling a seat
-  writes that person's obligations; releasing one keeps the record and stops the
-  work counting.
+- **The crew list as seats** — added, filled, released, mid-job. A seat holds a
+  worker off the bench or one of our own managers going out, because both need
+  the same permit and the same bed. Filling one writes that person's obligations;
+  releasing one keeps the record and stops the work counting.
+- **Per-seat obligations** — travel and insurance are not questions; a work
+  permit and a yard pass can be waived one seat at a time, because who needs a
+  permit is a fact about the job rather than about the person.
 - **People** — Parkk staff as records. Managers are assignable today and become
   logins later.
 - **The derived screens that justify the model** — the board, the expiry radar,

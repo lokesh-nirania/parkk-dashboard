@@ -19,7 +19,7 @@ dropdown:
 | Gate | What actually happens |
 |---|---|
 | **Confirm** | The client agrees to dates and a crew size. Both are stamped as a baseline that is never overwritten. |
-| **Assign a manager** | Planning opens: six workstreams, and one empty seat per person in the confirmed crew size. |
+| **Assign a manager** | Planning opens: six workstreams, and one empty seat per person in the confirmed crew size. Running the job and going to it stay separate — a manager takes a seat only if they are travelling. |
 | **Commence** | Refused while any workstream is unfinished, and it says which ones. |
 
 **Planning is the stage with depth.** Six workstreams run at once — manpower,
@@ -34,11 +34,20 @@ and where the job sits today. "Has this slipped?" is unanswerable against a
 single mutable date field, because the number it used to hold is gone. Keeping
 the baseline separate makes slip a subtraction rather than an argument.
 
-**A seat has a beginning and an end.** Crew changes mid-flight — somebody joins
-in week three, somebody comes off in week five. Filling a seat writes that
-person's obligations (visa, flights, pass, cover), which sends travel and
-immigration back to unfinished on their own. Releasing one ends the seat and
-stops its work counting, without deleting anything.
+**A seat has a beginning, an end, and somebody in it.** Crew changes mid-flight —
+somebody joins in week three, somebody comes off in week five. Filling a seat
+writes that person's obligations (flights, a bed, a transfer, a pass, cover and a
+permit), which sends travel and immigration back to unfinished on their own.
+Releasing one ends the seat and stops its work counting, without deleting
+anything.
+
+Whoever is in the seat is manpower, including our own: a manager who flies out to
+run the job from the dock needs the same permit and the same bed as the blaster
+beside them, so they hold a seat rather than being a special case. What that seat
+*needs* is a per-seat tag, because a Polish painter in Rotterdam needs no work
+permit and the Ukrainian blaster beside him does — while both of them need a
+flight, a bed and a way to the yard. Travel is never a question; a permit always
+is.
 
 **The trail carries structure, not just prose.** Every write records the field it
 moved and the values either side. So the dashboard shows the current state —

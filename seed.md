@@ -35,14 +35,23 @@ The one to demo. Everything that can be true at once, is:
 
 - Quoted for six on the 8th; the client came back **four days later** — so the
   confirmed baseline sits four days off the quote, visible on the schedule panel.
-- Two managers on it, because a big job has two.
-- Five seats filled, one still empty. **Piotr's visa was refused** and the agency
-  is appealing, so immigration is red with a note on the task.
+- Two managers on it, because a big job has two — and **one of them is going**,
+  holding seat 6 with the same permit, bed and yard pass as the crew. Her permit
+  is the one that has been filed for five weeks with no reply.
+- Six seats filled, and **only three of them need a work permit**: it is a
+  Rotterdam job, so the Polish, Portuguese and Norwegian passports are waived and
+  the Ukrainian, the Brazilian and the Indian are not. Everybody needs a flight,
+  a bed, a way to the dock and a pass through the gate — those are what the tag
+  does not ask about.
+- **Marco's permit was refused** and the agency is appealing, so immigration is
+  red with a note on the task.
 - **Rui's yard pass was issued as a 30-day pass**, nine days short of the job end.
   It is ticked *done* and the workstream is still red — the rule nobody can
   enforce by eye.
 - Travel was **finished**, and then **Lena joined in week three** and it went back
   to unfinished on its own. Both crossings are in the history with the reason.
+  She holds a German passport, so nothing opens under immigration — but four
+  travel tasks do, which is the distinction the tag exists for.
 - **Anders came off** for a family emergency: the seat keeps its record, his
   finished work stops counting.
 - The yard then **slipped the window six days**, with the reason recorded.
@@ -62,8 +71,11 @@ It did not go ahead. One terminal status, one optional note.
 
 ### PK-26005 · Andaman Pride — Dubai · *planning, T−12*
 Starting in twelve days with everything through except the kit: three crew fully
-cleared, and logistics carrying a blocked drum of thinners stuck at customs and
-spray units the client has not sent. The board's urgent row.
+cleared — all three needing permits, because Dubai — and logistics carrying a
+blocked drum of thinners stuck at customs and spray units the client has not
+sent. The board's urgent row. Rahul runs it **without going**, which is the
+other half of the manager story: the *Running* and *Going out* columns on
+`/managers` are filled by different people.
 
 ---
 

@@ -63,6 +63,35 @@ variation record rather than a difference between two columns.
 
 ---
 
+### A seat holds a worker or one of ours
+`assignments.worker_id` or `assignments.person_id`, at most one, resolved by
+`seats_effective`.
+
+**Why** — a manager who flies out to run the job from the dock needs the same
+permit, the same bed and the same yard pass as the blaster in the next seat. If
+they are not manpower, every one of those obligations has to be remembered by
+hand for exactly the person nobody thinks to check.
+
+**Cost** — two nullable columns instead of one, and a view to read them through.
+
+**Reverses if** — never for managers, but a third kind of occupant (a client's
+own inspector, a subcontractor) would turn the pair into an occupant table.
+
+---
+
+### Assigning a manager does not seat them
+Running a job and going to it are separate facts, and the manager screen shows
+them in separate columns.
+
+**Why** — most managers never leave the office, so a seat created automatically
+would be a seat somebody has to remember to release, and manpower would read
+1/12 on a job with nobody on it.
+
+**Reverses if** — the manager always goes, at which point the seat is part of
+what the confirm gate opens.
+
+---
+
 ### Filling a seat writes that person's obligations
 `open_person_tasks()` materialises the kit from `substage_templates.person_tasks`.
 
@@ -70,8 +99,39 @@ variation record rather than a difference between two columns.
 and immigration without anybody remembering to. Left to hand entry, the newest
 person is exactly the one whose visa nobody chases.
 
-**Cost** — the kit is the same for everybody. Per-country and per-client kits are
-[question 3](06-open-questions.md).
+**Cost** — the kit is the same for everybody who is not excused one of its
+parts. Per-country and per-client kits are [question 3](06-open-questions.md).
+
+---
+
+### Travel is not optional; a permit is
+`substage_templates.person_optional` says which kits a seat may be excused;
+`assignments.waived_substages` says which ones this seat was.
+
+**Why** — anybody who goes to the yard needs a flight, a bed, a way to the dock,
+cover and a pass through the gate, so asking would be a checkbox nobody ever
+unticks. Only a work permit genuinely varies, and it varies by *job and person together*: a Polish painter needs none
+in Rotterdam and one in Dubai. A flag on the worker would be wrong on the next
+job; a flag on the project would be wrong for half the crew. It belongs on the
+seat, which is the only row that knows both.
+
+**Cost** — one more thing to get right when a seat is filled, mitigated by there
+being exactly one of them and by defaulting to *required* — the failure that costs a flight is the permit nobody
+asked about, not the one asked about unnecessarily.
+
+---
+
+### Waiving sets tasks to `n_a` rather than deleting them
+`set_person_kit()` closes them; turning the kit back on reopens exactly those.
+
+**Why** — "we got him a visa and then found out he did not need one" is worth
+being able to read, and a deleted row cannot say it. `n_a` already means
+*not applicable to this scope* and already scores zero on worst-wins, so the
+status vocabulary answered this before the feature existed.
+
+**Cost** — the ratio counts `n_a` as settled, which means 6/6 can include work
+nobody did. The alternative — excluding them from the total — makes a fully
+waived workstream look untouched instead of closed.
 
 ---
 

@@ -34,9 +34,11 @@ Opens when a manager is assigned — not because somebody pressed a button calle
 - the six workstreams — manpower, immigration, travel, yard passes, insurance, logistics
 - one empty seat per person in the confirmed crew size
 
-Then it runs in parallel. Seats get names, and each name brings its own
-obligations. Tasks get added to any workstream, and workstreams get added to the
-project. Crew join and leave, and the workstreams follow them.
+Then it runs in parallel. Seats get names — crew, or one of ours who is going
+out — and each name brings its own obligations: flights, a bed, a transfer, a
+pass, cover, and a work permit unless that seat is excused one. Tasks get added
+to any workstream, and workstreams get added to the project. Crew join and leave,
+and the workstreams follow them.
 
 Exits: **commence**, refused while any workstream is unfinished, naming the ones
 that are.

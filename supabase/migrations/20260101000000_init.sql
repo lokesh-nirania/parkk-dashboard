@@ -251,8 +251,14 @@ create table project_managers (
 create index on project_managers (person_id) where removed_at is null;
 
 -- ------------------------------------------------------------------- seats
--- A seat on the project. worker_id null = declared but unfilled, which is what
--- makes crew a trackable thing rather than a number in a field.
+-- A seat on the project. Empty until somebody is in it, which is what makes
+-- crew a trackable thing rather than a number in a field.
+--
+-- The occupant is a worker off the bench or one of our own managers. A manager
+-- who flies out needs the same permit, the same hotel and the same yard pass as
+-- the blaster in the next seat, so they hold a seat like anybody else instead
+-- of being a special case every screen has to remember. Exactly one of the two
+-- columns is set; seats_effective resolves them into one name.
 --
 -- Seats are added and released while the job runs. Nothing is ever deleted:
 -- released_at is what makes "we were twelve, then fourteen, then eleven" a
@@ -262,7 +268,13 @@ create table assignments (
   project_id      uuid not null references projects(id) on delete cascade,
   seat_no         integer not null,
   worker_id       uuid references workers(id) on delete set null,
+  person_id       uuid references people(id) on delete set null,
   trade           text not null default 'Unassigned',
+  -- Which obligation kits this seat does not need, by template key. A local
+  -- hire needs no work permit; the same person flying to Dubai does. It is a
+  -- fact about this person on this job, so it lives on the seat and not on
+  -- the worker. Travel is never in here — everybody who travels needs a bed.
+  waived_substages text[] not null default '{}',
   mobilize_on     date,
   demobilize_on   date,
   filled_at       timestamptz,     -- when a name went into the seat
@@ -271,11 +283,13 @@ create table assignments (
   added_by        uuid references people(id) on delete set null,
   released_by     uuid references people(id) on delete set null,
   created_at      timestamptz not null default now(),
-  unique (project_id, seat_no)
+  unique (project_id, seat_no),
+  constraint assignments_one_occupant check (num_nonnulls(worker_id, person_id) <= 1)
 );
 
 create index on assignments (project_id) where released_at is null;
 create index on assignments (worker_id);
+create index on assignments (person_id);
 
 -- ------------------------------------------------------------- the substages
 
@@ -291,30 +305,35 @@ create table substage_templates (
   title         text not null,
   help          text,
   unit          substage_unit not null default 'tasks',
-  person_tasks  text[] not null default '{}'
+  person_tasks  text[] not null default '{}',
+  -- Whether a seat may be excused this kit. Everything is false but the work
+  -- permit: anybody who goes needs a bed, cover and a way through the gate, so
+  -- there is nothing to decide. A permit is the one that genuinely varies —
+  -- half the crew on a local job needs none.
+  person_optional boolean not null default false
 );
 
-insert into substage_templates (key, stage, seq, title, unit, person_tasks, help) values
-  ('manpower',    'planning', 1, 'Manpower',                  'seats', '{}',
-   'Every seat filled with a named worker. Derived from the seats themselves, never ticked by hand.'),
+insert into substage_templates (key, stage, seq, title, unit, person_tasks, person_optional, help) values
+  ('manpower',    'planning', 1, 'Manpower',                  'seats', '{}', false,
+   'Every seat filled with a named person — crew off the bench, or one of our own managers going out. Derived from the seats themselves, never ticked by hand.'),
 
   ('immigration', 'planning', 2, 'Immigration & work permits', 'tasks',
-   '{Work permit / visa}',
-   'Visas and permits, per person, per destination.'),
+   '{Work permit / visa}', true,
+   'Visas and permits, per person, per destination. Waived per seat for anyone who does not need one.'),
 
   ('travel',      'planning', 3, 'Travel arrangements',        'tasks',
-   '{Inbound flight,Outbound flight}',
-   'Flights and transfers per person. Some clients book their own — the task still goes red, only who you chase changes.'),
+   '{Inbound flight,Outbound flight,Accommodation,Airport transfer}', false,
+   'Everybody who goes needs flights, a bed and a way to the yard — there is no such thing as a seat that travels without them. Some clients book their own; the task still goes red, only who you chase changes.'),
 
   ('yard_pass',   'planning', 4, 'Shipyard entry',             'tasks',
-   '{Yard pass & induction}',
+   '{Yard pass & induction}', false,
    'Passes and inductions. Watch the validity date against the job end date.'),
 
   ('insurance',   'planning', 5, 'Insurance',                  'tasks',
-   '{Cover in place}',
+   '{Cover in place}', false,
    'Cover for every person on the job.'),
 
-  ('logistics',   'planning', 6, 'Logistics',                  'tasks', '{}',
+  ('logistics',   'planning', 6, 'Logistics',                  'tasks', '{}', false,
    'Kit and consumables to the yard. Long lead times — which is why it is a planning workstream and not a start-day one.');
 
 -- One project's live copy. Rows here can also be typed in by hand: a substage
@@ -454,22 +473,51 @@ begin
   return inserted;
 end $$;
 
--- The obligation kit for one seat: a visa, two flights, a pass, a cover note.
--- Called when a worker goes into a seat — including in week three, which is
--- how travel goes back to pending without anybody deciding it should.
+-- ------------------------------------------------------------------- views
+
+-- A seat, and whoever is in it. Two nullable columns become one name here, once,
+-- so that nothing downstream has to ask whether this seat holds a welder off the
+-- bench or the manager who decided to fly out and run the job from the dock.
+create or replace view seats_effective
+with (security_invoker = on) as
+select
+  a.*,
+  case
+    when a.worker_id is not null then 'worker'
+    when a.person_id is not null then 'manager'
+  end                                              as occupant_kind,
+  coalesce(a.worker_id, a.person_id)               as occupant_id,
+  coalesce(w.full_name, pe.full_name)              as occupant_name,
+  coalesce(w.full_name, pe.short_name)             as occupant_short,
+  w.nationality                                    as occupant_nationality,
+  (a.worker_id is not null or a.person_id is not null) as is_filled,
+  (a.released_at is null)                          as is_live
+from assignments a
+left join workers w  on w.id  = a.worker_id
+left join people  pe on pe.id = a.person_id;
+
+-- The obligation kit for one seat: flights, a bed, a transfer, a pass, cover,
+-- and a permit unless this seat has been excused one. Called when somebody goes
+-- into a seat — including in week three, which is how travel goes back to
+-- pending without anybody deciding it should.
+--
+-- It reads seats_effective rather than assignments so a manager in a seat gets
+-- the same kit as a welder. Insert-only: it never resurrects something that was
+-- deliberately closed.
 create or replace function open_person_tasks(p_assignment uuid) returns integer
 language plpgsql as $$
 declare inserted integer;
 begin
   insert into tasks (project_id, substage_id, assignment_id, title, subject_label)
-  select a.project_id, s.id, a.id, t.title, w.full_name
-  from assignments a
-  join workers w on w.id = a.worker_id
+  select a.project_id, s.id, a.id, t.title, a.occupant_name
+  from seats_effective a
   join project_substages s on s.project_id = a.project_id
   join substage_templates st on st.key = s.template_key
   cross join lateral unnest(st.person_tasks) as t(title)
   where a.id = p_assignment
-    and a.released_at is null
+    and a.is_live
+    and a.is_filled
+    and not (st.key = any(a.waived_substages))
   on conflict (assignment_id, substage_id, title) where assignment_id is not null
   do nothing;
 
@@ -477,7 +525,52 @@ begin
   return inserted;
 end $$;
 
--- ------------------------------------------------------------------- views
+-- Turn one kit on or off for one seat.
+--
+-- Waiving never deletes. The tasks become n/a — a status the rollups already
+-- ignore — and anything already finished stays finished, because "we got him a
+-- visa and then found out he did not need one" is worth being able to read.
+-- Requiring it again reopens exactly what was set aside and writes anything
+-- that was never there.
+create or replace function set_person_kit(
+  p_assignment uuid, p_key text, p_required boolean
+) returns integer
+language plpgsql as $$
+declare touched integer;
+begin
+  if p_required then
+    update assignments
+       set waived_substages = array_remove(waived_substages, p_key)
+     where id = p_assignment;
+
+    update tasks t set status = 'not_started'
+      from project_substages s
+     where s.id = t.substage_id
+       and t.assignment_id = p_assignment
+       and s.template_key = p_key
+       and t.status = 'n_a';
+
+    get diagnostics touched = row_count;
+    return touched + open_person_tasks(p_assignment);
+  end if;
+
+  update assignments
+     set waived_substages = (
+       select coalesce(array_agg(distinct k), '{}')
+       from unnest(waived_substages || p_key) k
+     )
+   where id = p_assignment;
+
+  update tasks t set status = 'n_a'
+    from project_substages s
+   where s.id = t.substage_id
+     and t.assignment_id = p_assignment
+     and s.template_key = p_key
+     and t.status <> 'done';
+
+  get diagnostics touched = row_count;
+  return touched;
+end $$;
 
 -- A task, plus the two things nobody catches by eye.
 create or replace view tasks_effective
@@ -489,13 +582,14 @@ select
   p.name                                        as project_name,
   s.title                                       as substage_title,
   s.template_key                                as substage_key,
-  w.full_name                                   as worker_name,
+  a.occupant_name,
+  a.occupant_kind,
   a.seat_no,
   a.released_at                                 as seat_released_at,
   -- A task belonging to somebody who has left the job is neither outstanding
   -- work nor an achievement to count. It stays readable; it stops counting.
   (a.released_at is null)                       as is_live,
-  coalesce(w.full_name, t.subject_label)        as subject,
+  coalesce(a.occupant_name, t.subject_label)    as subject,
   own.short_name                                as owner_short,
   -- A yard pass valid to 20 March on a job running to 4 April is not green,
   -- whatever anybody ticked.
@@ -509,8 +603,7 @@ select
 from tasks t
 join projects p on p.id = t.project_id
 join project_substages s on s.id = t.substage_id
-left join assignments a on a.id = t.assignment_id
-left join workers w on w.id = a.worker_id
+left join seats_effective a on a.id = t.assignment_id
 left join people own on own.id = t.owner_person_id;
 
 -- A substage and what is beneath it. Manpower counts seats; everything else
@@ -549,7 +642,9 @@ left join people own on own.id = s.owner_person_id
 left join lateral (
   select
     count(*)::int                                                as total,
-    count(*) filter (where te.status = 'done')::int              as done,
+    -- n/a counts as settled, not as outstanding: a seat excused a work permit
+    -- has no permit to chase, and the ratio should say so.
+    count(*) filter (where te.status in ('done','n_a'))::int     as done,
     count(*) filter (where te.status = 'blocked')::int           as blocked,
     count(*) filter (where te.status = 'awaiting_external')::int as awaiting,
     count(*) filter (where te.has_expiry_gap)::int               as expiry_gaps,
@@ -565,10 +660,10 @@ left join lateral (
 left join lateral (
   -- Released seats are history, not outstanding work.
   select
-    count(*)::int                                        as total,
-    count(*) filter (where a.worker_id is not null)::int as filled
-  from assignments a
-  where a.project_id = s.project_id and a.released_at is null
+    count(*)::int                                as total,
+    count(*) filter (where a.is_filled)::int     as filled
+  from seats_effective a
+  where a.project_id = s.project_id and a.is_live
 ) seats on true;
 
 -- The board row: one line per project with its clock, its people and its flags.
@@ -603,13 +698,15 @@ select
   (select count(*) from project_managers pm
     where pm.project_id = p.id and pm.removed_at is null)           as manager_count,
 
-  (select count(*) from assignments a
-    where a.project_id = p.id and a.released_at is null)            as seats_total,
-  (select count(*) from assignments a
-    where a.project_id = p.id and a.released_at is null
-      and a.worker_id is not null)                                  as seats_filled,
-  (select count(*) from assignments a
-    where a.project_id = p.id and a.released_at is not null)        as seats_released,
+  (select count(*) from seats_effective a
+    where a.project_id = p.id and a.is_live)                        as seats_total,
+  (select count(*) from seats_effective a
+    where a.project_id = p.id and a.is_live and a.is_filled)        as seats_filled,
+  (select count(*) from seats_effective a
+    where a.project_id = p.id and not a.is_live)                    as seats_released,
+  (select count(*) from seats_effective a
+    where a.project_id = p.id and a.is_live
+      and a.occupant_kind = 'manager')                              as seats_manager,
 
   (select count(*) from project_substages s
     where s.project_id = p.id and s.stage = 'planning')             as planning_total,
@@ -721,12 +818,13 @@ grant select, insert, update, delete on
 grant select on substage_templates to authenticated;
 
 grant select on
-  tasks_effective, project_substage_effective, project_board,
+  seats_effective, tasks_effective, project_substage_effective, project_board,
   project_schedule_events, project_stage_periods
   to authenticated;
 
 grant execute on function open_planning(uuid) to authenticated;
 grant execute on function open_person_tasks(uuid) to authenticated;
+grant execute on function set_person_kit(uuid, text, boolean) to authenticated;
 grant execute on function next_project_code() to authenticated;
 grant execute on function status_severity(item_status) to authenticated;
 

@@ -41,14 +41,26 @@ every rollup read the same function.
 
 | Unit | Used by | Progress is |
 |---|---|---|
-| `seats` | Manpower | Filled seats over live seats. A confirmed twelve with nobody named reads 0/12 and goes red without anybody inventing a row. |
-| `tasks` | Everything else | Tasks done over tasks that count. |
+| `seats` | Manpower | Filled seats over live seats. A confirmed twelve with nobody named reads 0/12 and goes red without anybody inventing a row. A seat is filled whether a worker or one of our own managers is in it. |
+| `tasks` | Everything else | Tasks settled over tasks that exist. |
 
 A workstream with nothing beneath it keeps the status somebody set by hand —
 which is how a workstream that genuinely does not apply gets closed as `n/a`, so
 the commence gate does not deadlock on it forever. The moment something is
 beneath it (`is_derived`), the control disappears and the action refuses to
 write: nobody ticks travel green while a flight is unbooked.
+
+## `n/a` counts as settled
+
+A task nobody has to do is not outstanding work. `n_a` scores 0 on worst-wins
+and counts toward the *done* half of a ratio, so a workstream where every task
+is `n_a` reads as closed rather than as permanently unfinished.
+
+This is what makes a waived obligation legible. A seat excused a work permit has
+its permit task set to `n_a` rather than deleted: immigration reads 3/6 instead
+of 3/3-and-three-rows-missing, the three that were never needed are visible as
+n/a on the person's row, and the gate is not held open by an obligation nobody
+has.
 
 ## The expiry override
 
@@ -60,6 +72,19 @@ Before worst-wins runs, one rule fires:
 A yard pass marked done, valid to 20 March, on a job running to 4 April turns the
 cell red. Move the job's dates and the gap can appear on its own, without anybody
 touching the pass — which is exactly the failure this catches.
+
+## Waived obligations, and why they are per seat
+
+Everybody who goes needs a flight out, a bed, a way to the dock, a flight home,
+cover and a pass through the gate — there is nothing to ask, so none of those is
+waivable. A work permit is the opposite: half a local crew needs none, and which
+half depends on the job rather than the person. The same welder needs nothing in
+Gdańsk and a permit in Dubai.
+
+So the waiver lives on the seat (`assignments.waived_substages`), it is one
+click on the crew row, and it fires the same before/after reading of the
+workstreams as any other change — turning a permit back on can reopen
+immigration, and the trail says who did it and when.
 
 ## Released seats stop counting
 

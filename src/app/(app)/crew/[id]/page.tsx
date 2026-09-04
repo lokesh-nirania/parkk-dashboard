@@ -24,7 +24,7 @@ export default async function CrewMemberPage({ params }: Props) {
   const [{ data: worker }, { data: seatRows }, { data: taskRows, error }, { data: projectRows }] =
     await Promise.all([
       supabase.from('workers').select('*').eq('id', id).maybeSingle(),
-      supabase.from('assignments').select('*').eq('worker_id', id).order('created_at'),
+      supabase.from('seats_effective').select('*').eq('worker_id', id).order('created_at'),
       supabase.from('tasks_effective').select('*').order('substage_title'),
       supabase.from('projects').select('id, code, name'),
     ]);

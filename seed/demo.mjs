@@ -17,10 +17,15 @@ import { call, fd, one, rows, iso } from './drive.mjs';
 const P = (code) => one(`select id from projects where code='${code}'`);
 const sub = (p, k) => one(`select id from project_substages where project_id='${p}' and template_key='${k}'`);
 const seats = (p) => rows(`select id from assignments where project_id='${p}' and released_at is null order by seat_no`);
+// Filling a seat the way the form does: an id off a list, or a name we do not
+// know yet. needs_immigration is the per-seat tag, and omitting it is the same
+// as leaving the box unticked — this seat needs no work permit for this job.
+const fill = (o) => fd({ occupant: o.occupant ?? 'new', ...o });
 const task = (p, k, who, title) => one(
   `select t.id from tasks t join project_substages s on s.id=t.substage_id
-     join assignments a on a.id=t.assignment_id join workers w on w.id=a.worker_id
-    where t.project_id='${p}' and s.template_key='${k}' and t.title='${title}' and w.full_name='${who}'`);
+     join seats_effective a on a.id=t.assignment_id
+    where t.project_id='${p}' and s.template_key='${k}' and t.title='${title}'
+      and a.occupant_name='${who}'`);
 const kit = (p, k, like) => one(`select id from tasks where substage_id='${sub(p,k)}' and title like '${like}'`);
 const state = (p, k) => one(`select effective_status||' '||done||'/'||total from project_substage_effective where id='${sub(p,k)}'`);
 
@@ -47,31 +52,41 @@ await call('confirmProject', [dawn, fd({ start_date: iso(38), end_date: iso(60),
 await call('assignManager', [dawn, varsha], dawnPage);
 await call('assignManager', [dawn, abhi], dawnPage);
 
+// A Rotterdam job: the EU passports need no permit and the rest do, which is a
+// fact about this job rather than about the person. Everybody needs a bed.
 const crew = [
-  ['Ivan Petrov', 'Blaster', 'Bulgarian', '+359 88 123 4567', 'X4471902', iso(760)],
-  ['Marco Silva', 'Painter', 'Portuguese', '+351 91 233 8890', 'P2298311', iso(420)],
-  ['Anders Holm', 'Blaster', 'Norwegian', '+47 900 21 553', 'N1180234', iso(118)],
-  ['Piotr Nowak', 'Painter', 'Polish', '+48 601 220 118', 'PL9920881', iso(640)],
-  ['Rui Alves', 'Supervisor', 'Portuguese', '+351 92 887 1120', 'P7741009', iso(980)],
+  ['Ivan Petrov', 'Blaster', 'Ukrainian', '+380 67 220 4471', 'X4471902', iso(760), true],
+  ['Marco Silva', 'Painter', 'Brazilian', '+55 21 99233 8890', 'P2298311', iso(420), true],
+  ['Anders Holm', 'Blaster', 'Norwegian', '+47 900 21 553', 'N1180234', iso(118), false],
+  ['Piotr Nowak', 'Painter', 'Polish', '+48 601 220 118', 'PL9920881', iso(640), false],
+  ['Rui Alves', 'Supervisor', 'Portuguese', '+351 92 887 1120', 'P7741009', iso(980), false],
 ];
 const ds = seats(dawn);
 for (let i = 0; i < crew.length; i++)
-  await call('fillSeat', [ds[i][0], fd({ worker_name: crew[i][0], trade: crew[i][1], mobilize_on: iso(36) })], dawnPage);
+  await call('fillSeat', [ds[i][0], fill({ worker_name: crew[i][0], trade: crew[i][1],
+    mobilize_on: iso(36), needs_immigration: crew[i][6] ? 'on' : undefined })], dawnPage);
 for (const [name, , nationality, phone, passport_no, passport_expiry] of crew)
   await call('updateWorker', [one(`select id from workers where full_name='${name}'`),
     fd({ nationality, phone, passport_no, passport_expiry })], '/crew');
 
-// the visas: three through, one filed and silent, one refused
-for (const [who, st] of [['Ivan Petrov','done'],['Marco Silva','done'],['Rui Alves','done'],['Anders Holm','awaiting_external']])
+// The manager is going out too. She holds the last confirmed seat and gets the
+// same flights, bed, transfer, pass and permit as anybody else on the job.
+await call('fillSeat', [ds[5][0], fill({ occupant: `manager:${varsha}`,
+  trade: 'Project manager', mobilize_on: iso(34), needs_immigration: 'on' })], dawnPage);
+const varshaName = one(`select full_name from people where id='${varsha}'`);
+
+// the permits: one through, one filed and silent, one refused
+for (const [who, st] of [['Ivan Petrov','done'],[varshaName,'awaiting_external']])
   await call('setTaskStatus', [task(dawn,'immigration',who,'Work permit / visa'), st], dawnPage);
-const piotrVisa = task(dawn, 'immigration', 'Piotr Nowak', 'Work permit / visa');
-await call('setTaskStatus', [piotrVisa, 'blocked'], dawnPage);
-await call('updateTask', [piotrVisa, fd({ due_date: iso(20), owner_party: 'agency',
+const marcoVisa = task(dawn, 'immigration', 'Marco Silva', 'Work permit / visa');
+await call('setTaskStatus', [marcoVisa, 'blocked'], dawnPage);
+await call('updateTask', [marcoVisa, fd({ due_date: iso(20), owner_party: 'agency',
   note: 'Refused on first sitting — agency appealing, hearing on the 22nd.' })], dawnPage);
 
-// travel finished, insurance in place, passes issued
-for (const [who] of crew) {
-  for (const leg of ['Inbound flight', 'Outbound flight'])
+// travel finished, insurance in place, passes issued — for the manager too
+const dawnGoers = [...crew.map((c) => c[0]), varshaName];
+for (const who of dawnGoers) {
+  for (const leg of ['Inbound flight', 'Outbound flight', 'Accommodation', 'Airport transfer'])
     await call('setTaskStatus', [task(dawn,'travel',who,leg), 'done'], dawnPage);
   await call('setTaskStatus', [task(dawn,'insurance',who,'Cover in place'), 'done'], dawnPage);
   const pass = task(dawn, 'yard_pass', who, 'Yard pass & induction');
@@ -98,10 +113,16 @@ await call('setTaskStatus', [kit(dawn,'logistics','60 drums%'), 'in_progress'], 
 
 // week three: a body is added, and travel is not finished any more
 await call('addSeats', [dawn, 1], dawnPage);
-const seat6 = one(`select id from assignments where project_id='${dawn}' order by seat_no desc limit 1`);
-await call('fillSeat', [seat6, fd({ worker_name: 'Lena Fischer', trade: 'Painter', mobilize_on: iso(40) })], dawnPage);
+const seat7 = one(`select id from assignments where project_id='${dawn}' order by seat_no desc limit 1`);
+// Nobody knows her nationality when the seat is filled, so the permit box stays
+// ticked — the safe default. Travel, insurance and immigration all reopen.
+await call('fillSeat', [seat7, fill({ worker_name: 'Lena Fischer', trade: 'Painter',
+  mobilize_on: iso(40), needs_immigration: 'on' })], dawnPage);
 await call('updateWorker', [one("select id from workers where full_name='Lena Fischer'"),
   fd({ nationality: 'German', phone: '+49 151 220 118', passport_no: 'D9920114', passport_expiry: iso(1400) })], '/crew');
+// Her passport arrives: German, so there was never a permit to chase. One click
+// on the crew row, and immigration settles back without the task being deleted.
+await call('setSeatKit', [seat7, 'immigration', false], dawnPage);
 
 // and one goes home
 await call('releaseSeat', [one(`select a.id from assignments a join workers w on w.id=a.worker_id
@@ -112,7 +133,9 @@ await call('releaseSeat', [one(`select a.id from assignments a join workers w on
 await call('rescheduleProject', [dawn, fd({ start_date: iso(44), end_date: iso(66),
   reason: 'Yard slipped the docking window by six days' })], dawnPage);
 
-console.log('PK-26001 travel  ', state(dawn, 'travel'), '· yard pass', state(dawn, 'yard_pass'));
+console.log('PK-26001 travel  ', state(dawn, 'travel'),
+            '· permits', state(dawn, 'immigration'),
+            '· yard pass', state(dawn, 'yard_pass'));
 
 /* ------------------------------------------------------------------------- */
 
@@ -176,6 +199,7 @@ const pride = P('PK-26005'), pridePage = `/projects/${pride}`;
 await call('confirmProject', [pride, fd({ start_date: iso(12), end_date: iso(34), team_size: '3' })], pridePage);
 await call('assignManager', [pride, rahul], pridePage);
 
+// Dubai: everybody needs a permit, and Rahul runs it from here without going.
 const prideCrew = [
   ['Suresh Nair', 'Painter', 'Indian', '+971 50 220 8891', 'M4410233', iso(890)],
   ['Ahmed Farouk', 'Blaster', 'Egyptian', '+20 100 442 1180', 'A2201947', iso(150)],
@@ -183,14 +207,16 @@ const prideCrew = [
 ];
 const ps = seats(pride);
 for (let i = 0; i < prideCrew.length; i++)
-  await call('fillSeat', [ps[i][0], fd({ worker_name: prideCrew[i][0], trade: prideCrew[i][1], mobilize_on: iso(10) })], pridePage);
+  await call('fillSeat', [ps[i][0], fill({ worker_name: prideCrew[i][0], trade: prideCrew[i][1],
+    mobilize_on: iso(10), needs_immigration: 'on' })], pridePage);
 for (const [name, , nationality, phone, passport_no, passport_expiry] of prideCrew)
   await call('updateWorker', [one(`select id from workers where full_name='${name}'`),
     fd({ nationality, phone, passport_no, passport_expiry })], '/crew');
 
 for (const [who] of prideCrew) {
   for (const t of ['Work permit / visa']) await call('setTaskStatus', [task(pride,'immigration',who,t), 'done'], pridePage);
-  for (const t of ['Inbound flight','Outbound flight']) await call('setTaskStatus', [task(pride,'travel',who,t), 'done'], pridePage);
+  for (const t of ['Inbound flight','Outbound flight','Accommodation','Airport transfer'])
+    await call('setTaskStatus', [task(pride,'travel',who,t), 'done'], pridePage);
   await call('setTaskStatus', [task(pride,'insurance',who,'Cover in place'), 'done'], pridePage);
   const pass = task(pride,'yard_pass',who,'Yard pass & induction');
   await call('setTaskStatus', [pass, 'done'], pridePage);

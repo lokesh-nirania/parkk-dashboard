@@ -17,7 +17,7 @@ export default async function CrewPage() {
   const [{ data: workerRows, error }, { data: seatRows }, { data: taskRows }, { data: projectRows }] =
     await Promise.all([
       supabase.from('workers').select('*').order('full_name'),
-      supabase.from('assignments').select('*'),
+      supabase.from('seats_effective').select('*'),
       supabase.from('tasks_effective').select('id, assignment_id, status, has_expiry_gap, is_live'),
       supabase.from('projects').select('id, code'),
     ]);
@@ -46,7 +46,7 @@ export default async function CrewPage() {
     tally.set(wid, row);
   }
 
-  const onAJob = workers.filter((w) => (seatsByWorker.get(w.id) ?? []).some((s) => !s.released_at));
+  const onAJob = workers.filter((w) => (seatsByWorker.get(w.id) ?? []).some((s) => s.is_live));
 
   return (
     <div className="space-y-6">

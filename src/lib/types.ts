@@ -37,6 +37,30 @@ export const SUBSTAGE_KEYS = [
 ] as const;
 export type SubstageKey = (typeof SUBSTAGE_KEYS)[number];
 
+/**
+ * The workstreams that write a task per person when a seat is filled, and
+ * whether a seat can be excused one.
+ *
+ * Travel is the reason this distinction exists. Anybody who goes to the yard
+ * needs a flight out, a bed, a way to the dock, a flight home, cover and a pass
+ * through the gate — there is no such thing as a seat that travels without them,
+ * so there is nothing to ask. A permit is the opposite: half a local crew needs
+ * none, and which half is a fact about this job, not about the person.
+ *
+ * Mirrors substage_templates.person_tasks / person_optional in the migration.
+ */
+export const PERSON_KITS: Record<string, { label: string; optional: boolean; tasks: number }> = {
+  immigration: { label: 'Work permit', optional: true,  tasks: 1 },
+  travel:      { label: 'Travel',      optional: false, tasks: 4 },
+  yard_pass:   { label: 'Yard pass',   optional: false, tasks: 1 },
+  insurance:   { label: 'Insurance',   optional: false, tasks: 1 },
+};
+
+/** The kits a seat may be excused, in the order they are shown. */
+export const OPTIONAL_KITS = Object.entries(PERSON_KITS)
+  .filter(([, k]) => k.optional)
+  .map(([key, k]) => ({ key, label: k.label }));
+
 /* ------------------------------------------------------------------- labels */
 
 export const STATUS_LABEL: Record<ItemStatus, string> = {
@@ -242,6 +266,8 @@ export type BoardRow = {
   seats_total: number;
   seats_filled: number;
   seats_released: number;
+  /** How many of the live seats are our own managers going out. */
+  seats_manager: number;
 
   planning_total: number;
   planning_done: number;
@@ -310,7 +336,8 @@ export type Task = {
   project_end_date: string | null;
   substage_title: string;
   substage_key: SubstageKey | null;
-  worker_name: string | null;
+  occupant_name: string | null;
+  occupant_kind: OccupantKind | null;
   seat_no: number | null;
   seat_released_at: string | null;
   subject: string | null;
@@ -322,19 +349,37 @@ export type Task = {
   severity: number;
 };
 
-/** A seat on the job. Never deleted — released is a date, not a disappearance. */
+/**
+ * Who is in a seat. Never deleted — released is a date, not a disappearance.
+ *
+ * A manager who flies out and runs the job from the dock is manpower like
+ * anybody else — same permit, same bed, same yard pass — so a seat holds
+ * either kind and everything downstream reads one name.
+ */
+export type OccupantKind = 'worker' | 'manager';
+
 export type Seat = {
   id: string;
   project_id: string;
   seat_no: number;
   worker_id: string | null;
+  person_id: string | null;
   trade: string;
+  /** Template keys this seat does not need. Read through OPTIONAL_KITS. */
+  waived_substages: string[];
   mobilize_on: string | null;
   demobilize_on: string | null;
   filled_at: string | null;
   released_at: string | null;
   release_reason: string | null;
   created_at: string;
+  /* from seats_effective */
+  occupant_kind: OccupantKind | null;
+  occupant_id: string | null;
+  occupant_name: string | null;
+  occupant_short: string | null;
+  is_filled: boolean;
+  is_live: boolean;
 };
 
 export type Worker = {
@@ -442,6 +487,7 @@ export const ACTION_LABEL: Record<string, string> = {
   seat_added: 'seat added',
   seat_filled: 'crew on',
   seat_released: 'crew off',
+  seat_kit_changed: 'obligations changed',
   worker_added: 'crew added',
   worker_updated: 'crew record',
   person_added: 'person added',

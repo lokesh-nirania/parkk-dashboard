@@ -32,10 +32,15 @@ assumptions that are expensive to unpick.
 write are reference data in the migration. Adding a seventh workstream to one
 project is a row; changing what every project starts with is a code change.
 
+A seat can already be excused a work permit one click at a time, which covers
+"half this crew is local". What it cannot do is change what the kit *contains*,
+or make some other part of it waivable.
+
 **Next:** an admin screen over `substage_templates`, including the
-`person_tasks` kit. Probably per project type — a supervision job does not need
-sixty drums of primer, and a repair job in the same yard needs a different kit
-from a hull job.
+`person_tasks` kit and which parts of it are waivable. Probably per project type
+or per destination — a supervision job does not need sixty drums of primer, and
+a country that wants a medical and a police certificate needs two more rows in
+the kit rather than two more tasks typed by hand forty times.
 
 **Blocked on:** [question 3](implementation/06-open-questions.md) — whether the
 checklist genuinely differs per country or per client.

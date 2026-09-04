@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import {
-  ITEM_STATUSES, TERMINAL,
+  ITEM_STATUSES, OPTIONAL_KITS, TERMINAL,
   type ItemStatus, type OwnerParty, type Person, type PersonRole,
   type ProjectStatus, type ProjectType, STATUS_LABEL,
 } from '@/lib/types';
@@ -1125,69 +1125,155 @@ export async function addSeats(projectId: string, count: number): Promise<Action
 }
 
 /**
- * Putting a name in a seat — and with it, the obligations that name brings.
+ * Putting somebody in a seat — and with it, the obligations they bring.
  *
- * A worker joining in week three has no visa, no flights and no yard pass, so
- * open_person_tasks writes them and immigration, travel, insurance and the yard
- * pass go back to unfinished. That is not a bug in the plan; it is the plan
- * telling the truth about what just changed.
+ * The occupant is a worker off the bench or one of our own managers, because a
+ * manager who goes to the yard needs the same permit, bed and pass as the
+ * blaster beside them. The form sends `occupant` as `worker:<id>`,
+ * `manager:<id>` or nothing at all, in which case the typed name becomes a new
+ * crew record.
+ *
+ * Whoever it is, joining in week three means no permit, no flights and no yard
+ * pass, so open_person_tasks writes them and travel, immigration, insurance and
+ * the yard pass go back to unfinished. That is not a bug in the plan; it is the
+ * plan telling the truth about what just changed.
  */
 export async function fillSeat(seatId: string, fd: FormData): Promise<ActionResult> {
   const { supabase, profile } = await me();
   if (!profile) return { error: 'Not signed in' };
 
   const { data: seat } = await supabase
-    .from('assignments').select('id, project_id, seat_no, worker_id, released_at')
+    .from('assignments')
+    .select('id, project_id, seat_no, worker_id, person_id, released_at')
     .eq('id', seatId).maybeSingle();
   if (!seat) return { error: 'Seat not found' };
   const s = seat as {
     id: string; project_id: string; seat_no: number;
-    worker_id: string | null; released_at: string | null;
+    worker_id: string | null; person_id: string | null; released_at: string | null;
   };
   if (s.released_at) return { error: 'That seat has been released. Add a new one instead.' };
 
-  const workerId = nullable(fd, 'worker_id');
-  const workerName = nullable(fd, 'worker_name');
+  const [kind, ref] = (str(fd, 'occupant') || '').split(':');
+  const typedName = nullable(fd, 'worker_name');
   const trade = str(fd, 'trade') || 'Unassigned';
-  if (!workerId && !workerName) return { fieldErrors: { worker_name: 'Who is taking the seat?' } };
 
-  let resolved = workerId;
-  if (!resolved && workerName) {
-    const { data: found } = await supabase
-      .from('workers').select('id').ilike('full_name', workerName).maybeSingle();
-    if (found) resolved = (found as { id: string }).id;
-    else {
-      const { data: made, error } = await supabase.from('workers')
-        .insert({ full_name: workerName, trade, nationality: nullable(fd, 'nationality') })
-        .select('id').single();
-      if (error) return { error: error.message };
-      resolved = (made as { id: string }).id;
+  let occupant: { worker_id: string | null; person_id: string | null; name: string; trade: string };
+
+  if (kind === 'manager' && ref) {
+    const { data } = await supabase
+      .from('people').select('id, full_name').eq('id', ref).maybeSingle();
+    const m = data as { id: string; full_name: string } | null;
+    if (!m) return { error: 'Could not find that person.' };
+    occupant = { worker_id: null, person_id: m.id, name: m.full_name, trade: trade === 'Unassigned' ? 'Project manager' : trade };
+  } else {
+    // A worker: an id off the bench, or a name we have not met before.
+    let resolved = kind === 'worker' && ref ? ref : null;
+    if (!resolved && typedName) {
+      const { data: found } = await supabase
+        .from('workers').select('id').ilike('full_name', typedName).maybeSingle();
+      if (found) resolved = (found as { id: string }).id;
+      else {
+        const { data: made, error } = await supabase.from('workers')
+          .insert({ full_name: typedName, trade, nationality: nullable(fd, 'nationality') })
+          .select('id').single();
+        if (error) return { error: error.message };
+        resolved = (made as { id: string }).id;
+      }
     }
+    if (!resolved) return { fieldErrors: { worker_name: 'Who is taking the seat?' } };
+
+    const { data: worker } = await supabase
+      .from('workers').select('id, full_name, trade').eq('id', resolved).maybeSingle();
+    const w = worker as { id: string; full_name: string; trade: string } | null;
+    if (!w) return { error: 'Could not find that worker.' };
+    occupant = { worker_id: w.id, person_id: null, name: w.full_name, trade: trade !== 'Unassigned' ? trade : w.trade };
   }
 
-  const { data: worker } = await supabase
-    .from('workers').select('id, full_name, trade').eq('id', resolved!).maybeSingle();
-  const w = worker as { id: string; full_name: string; trade: string } | null;
-  if (!w) return { error: 'Could not find that worker.' };
+  // What this seat does not need. Travel and insurance are never in here:
+  // everybody who goes needs a bed and cover, so there is nothing to ask.
+  const waived = OPTIONAL_KITS
+    .filter((k) => fd.get(`needs_${k.key}`) === null)
+    .map((k) => k.key);
 
   const before = await readSubstages(supabase, s.project_id);
 
   const { error } = await supabase.from('assignments').update({
-    worker_id: w.id,
-    trade: trade !== 'Unassigned' ? trade : w.trade,
+    worker_id: occupant.worker_id,
+    person_id: occupant.person_id,
+    trade: occupant.trade,
+    waived_substages: waived,
     filled_at: new Date().toISOString(),
     mobilize_on: date(fd, 'mobilize_on'),
   }).eq('id', seatId);
   if (error) return { error: error.message };
 
-  // The obligation kit: a visa, two flights, a pass, a cover note.
+  // The obligation kit: flights, a bed, a transfer, a pass, cover, and a work
+  // permit unless this seat was excused one.
   await supabase.rpc('open_person_tasks', { p_assignment: seatId });
 
+  const excused = OPTIONAL_KITS.filter((k) => waived.includes(k.key)).map((k) => k.label.toLowerCase());
   await log(supabase, profile, s.project_id, 'seat_filled',
-    `${w.full_name} took seat ${s.seat_no}`,
-    { entity: 'seat', itemId: s.id, field: 'worker_id', from: s.worker_id, to: w.id });
+    `${occupant.name} took seat ${s.seat_no}`
+      + (occupant.person_id ? ' — going out as well as running it' : '')
+      + (excused.length ? ` — no ${excused.join(' or ')} needed` : ''),
+    { entity: 'seat', itemId: s.id, field: 'occupant',
+      from: s.worker_id ?? s.person_id, to: occupant.worker_id ?? occupant.person_id });
 
-  await logSubstageMoves(supabase, profile, s.project_id, before, `${w.full_name} joined the crew`);
+  await logSubstageMoves(supabase, profile, s.project_id, before, `${occupant.name} joined the crew`);
+
+  refresh(s.project_id);
+  return { ok: true };
+}
+
+/**
+ * Turning one obligation off for one seat, or back on.
+ *
+ * This is the tag the crew list carries: a local hire needs no work permit, the
+ * same person flying to Dubai does, and it is a fact about this job rather than
+ * about the person, so it lives on the seat. Turning it off does not delete —
+ * the tasks go n/a, anything already finished stays finished, and turning it
+ * back on reopens exactly what was set aside.
+ */
+export async function setSeatKit(
+  seatId: string, key: string, required: boolean,
+): Promise<ActionResult> {
+  const { supabase, profile } = await me();
+  if (!profile) return { error: 'Not signed in' };
+
+  const kit = OPTIONAL_KITS.find((k) => k.key === key);
+  if (!kit) return { error: 'Everybody who goes needs that one.' };
+
+  const { data: seat } = await supabase
+    .from('seats_effective')
+    .select('id, project_id, seat_no, occupant_name, released_at, waived_substages')
+    .eq('id', seatId).maybeSingle();
+  if (!seat) return { error: 'Seat not found' };
+  const s = seat as {
+    id: string; project_id: string; seat_no: number; occupant_name: string | null;
+    released_at: string | null; waived_substages: string[];
+  };
+  if (s.released_at) return { error: 'That seat has been released.' };
+
+  const was = !s.waived_substages.includes(key);
+  if (was === required) return { ok: true };
+
+  const before = await readSubstages(supabase, s.project_id);
+
+  const { error } = await supabase.rpc('set_person_kit', {
+    p_assignment: seatId, p_key: key, p_required: required,
+  });
+  if (error) return { error: error.message };
+
+  const who = s.occupant_name ?? `Seat ${s.seat_no}`;
+  await log(supabase, profile, s.project_id, 'seat_kit_changed',
+    required
+      ? `${who} needs a ${kit.label.toLowerCase()} after all`
+      : `${who} does not need a ${kit.label.toLowerCase()}`,
+    { entity: 'seat', itemId: s.id, field: key,
+      from: was ? 'required' : 'not needed', to: required ? 'required' : 'not needed' });
+
+  await logSubstageMoves(supabase, profile, s.project_id, before,
+    `${who} — ${kit.label.toLowerCase()} ${required ? 'required' : 'waived'}`);
 
   refresh(s.project_id);
   return { ok: true };
@@ -1216,10 +1302,10 @@ export async function releaseSeat(seatId: string, fd: FormData): Promise<ActionR
   const reason = str(fd, 'reason');
   if (!reason) return { fieldErrors: { reason: 'Why are they coming off?' } };
 
-  const { data: worker } = s.worker_id
-    ? await supabase.from('workers').select('full_name').eq('id', s.worker_id).maybeSingle()
-    : { data: null };
-  const name = (worker as { full_name: string } | null)?.full_name ?? `Seat ${s.seat_no}`;
+  const { data: occ } = await supabase
+    .from('seats_effective').select('occupant_name').eq('id', seatId).maybeSingle();
+  const name = (occ as { occupant_name: string | null } | null)?.occupant_name
+    ?? `Seat ${s.seat_no}`;
 
   const before = await readSubstages(supabase, s.project_id);
 

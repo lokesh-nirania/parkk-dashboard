@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import {
-  OWNER_LABEL, STATUS_LABEL,
+  OPTIONAL_KITS, OWNER_LABEL, STATUS_LABEL,
   PROJECT_TYPE_LABEL, TERMINAL,
   type BoardRow, type ChangeEvent, type NamedRef, type Person, type ScheduleEvent,
   type Seat, type StagePeriod, type Substage, type Task, type Worker,
@@ -19,7 +19,7 @@ import { GateButton, CancelButton } from '@/components/gate-button';
 import { EditProjectButton } from '@/components/project-details';
 import { ManagerPicker, RemoveManagerButton } from '@/components/managers';
 import { AddSubstageButton, AddTaskButton, EditTaskButton, SubstageOwnerSelect } from '@/components/planning';
-import { AddSeatsButton, FillSeatButton, ReleaseSeatButton } from '@/components/crew';
+import { AddSeatsButton, FillSeatButton, KitToggle, ReleaseSeatButton } from '@/components/crew';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +63,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
     supabase.from('project_substage_effective').select('*').eq('project_id', id).order('seq'),
     supabase.from('tasks_effective').select('*').eq('project_id', id)
       .order('is_live', { ascending: false }).order('subject').order('title'),
-    supabase.from('assignments').select('*').eq('project_id', id).order('seat_no'),
+    supabase.from('seats_effective').select('*').eq('project_id', id).order('seat_no'),
     // people is named explicitly: three columns here point at it, and an
     // ambiguous embed comes back as an error rather than a row.
     supabase.from('project_managers')
@@ -98,9 +98,11 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const activeManagers = managers.filter((m) => m.removed_at === null);
   const pastManagers = managers.filter((m) => m.removed_at !== null);
 
-  const workerById = new Map(workers.map((w) => [w.id, w]));
-  const liveSeats = seats.filter((s) => s.released_at === null);
-  const releasedSeats = seats.filter((s) => s.released_at !== null);
+  const liveSeats = seats.filter((s) => s.is_live);
+  const releasedSeats = seats.filter((s) => !s.is_live);
+  // Managers are assignable to a seat like anybody else — a manager who goes
+  // out needs the same permit, bed and pass as the blaster beside them.
+  const goers = people.filter((pp) => pp.role === 'manager' || pp.role === 'admin');
 
   const active = subs.find((s) => s.id === sub) ?? null;
   const shown = active ? tasks.filter((t) => t.substage_id === active.id) : tasks;
@@ -112,8 +114,8 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   // Seats a task can be pinned to, labelled the way somebody would say it.
   const seatOptions = liveSeats.map((s) => ({
     id: s.id,
-    label: s.worker_id
-      ? `${workerById.get(s.worker_id)?.full_name ?? 'Unknown'} — seat ${s.seat_no}`
+    label: s.occupant_name
+      ? `${s.occupant_name} — seat ${s.seat_no}`
       : `Seat ${s.seat_no} (unfilled)`,
   }));
 
@@ -341,6 +343,9 @@ export default async function ProjectPage({ params, searchParams }: Props) {
                 {p.team_size !== null && p.team_size !== p.seats_total && (
                   <> Confirmed at {p.team_size}.</>
                 )}
+                {p.seats_manager > 0 && (
+                  <> {p.seats_manager === 1 ? 'One of ours is' : `${p.seats_manager} of ours are`} going out.</>
+                )}
               </p>
             </div>
             <AddSeatsButton projectId={p.id} />
@@ -350,26 +355,30 @@ export default async function ProjectPage({ params, searchParams }: Props) {
             <table className="w-full min-w-[720px] border-collapse text-[13px]">
               <thead>
                 <tr className="border-b border-line text-left">
-                  {['Seat', 'Worker', 'Trade', 'Mobilises', 'Obligations', ''].map((h) => (
+                  {['Seat', 'Who', 'Trade', 'Mobilises', 'Needs', 'Obligations', ''].map((h) => (
                     <th key={h} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {[...liveSeats, ...releasedSeats].map((s) => {
-                  const w = s.worker_id ? workerById.get(s.worker_id) : null;
                   const mine = tasks.filter((t) => t.assignment_id === s.id);
                   const open = mine.filter((t) => t.status !== 'done' && t.status !== 'n_a').length;
-                  const released = s.released_at !== null;
+                  const released = !s.is_live;
+                  const isManager = s.occupant_kind === 'manager';
+                  const href = isManager ? '/managers' : `/crew/${s.occupant_id}`;
 
                   return (
                     <tr key={s.id} className={`border-b border-line last:border-0 ${released ? 'opacity-55' : ''}`}>
                       <td className="tabular px-4 py-2.5 text-muted">{s.seat_no}</td>
                       <td className="px-4 py-2.5">
-                        {w ? (
-                          <Link href={`/crew/${w.id}`} className="font-medium text-ink underline-offset-2 hover:underline">
-                            {w.full_name}
-                          </Link>
+                        {s.occupant_name ? (
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            <Link href={href} className="font-medium text-ink underline-offset-2 hover:underline">
+                              {s.occupant_name}
+                            </Link>
+                            {isManager && <Chip title="One of ours, going out on the job">ours</Chip>}
+                          </span>
                         ) : (
                           <span className="text-faint">unfilled</span>
                         )}
@@ -381,14 +390,29 @@ export default async function ProjectPage({ params, searchParams }: Props) {
                       </td>
                       <td className="px-4 py-2.5 text-muted">{s.trade}</td>
                       <td className="whitespace-nowrap px-4 py-2.5 text-muted">{fmtDate(s.mobilize_on)}</td>
+                      {/* What this seat needs for this job. Travel is not here:
+                          everybody who goes gets a flight, a bed and a transfer. */}
+                      <td className="px-4 py-2.5">
+                        {!s.is_filled ? (
+                          <span className="text-faint">—</span>
+                        ) : (
+                          <span className="flex flex-wrap items-center gap-1">
+                            {OPTIONAL_KITS.map((k) => (
+                              released
+                                ? <span key={k.key} className={`text-[10px] ${s.waived_substages.includes(k.key) ? 'text-faint line-through' : 'text-muted'}`}>{k.label}</span>
+                                : <KitToggle key={k.key} seat={s} kitKey={k.key} label={k.label} />
+                            ))}
+                          </span>
+                        )}
+                      </td>
                       <td className="tabular px-4 py-2.5 text-muted">
                         {mine.length === 0 ? '—' : released ? `${mine.length} on file` : `${mine.length - open}/${mine.length}`}
                       </td>
                       <td className="px-4 py-2.5">
                         {!released && (
                           <div className="flex items-center justify-end gap-1.5">
-                            <FillSeatButton seat={s} workers={workers} />
-                            <ReleaseSeatButton seat={s} name={w?.full_name ?? `Seat ${s.seat_no}`} />
+                            <FillSeatButton seat={s} workers={workers} managers={goers} />
+                            <ReleaseSeatButton seat={s} name={s.occupant_name ?? `Seat ${s.seat_no}`} />
                           </div>
                         )}
                       </td>

@@ -6,12 +6,13 @@ work, and one is the record.
 ```
 people ──────┬──> project_managers ──┐
              │                       │
-clients ──┐  └──> (owns) ────────┐   │
+clients ──┐  ├──> (owns) ────────┐   │
 vessels ──┼──> projects ─────────┴───┴──> project_substages ──> tasks
 shipyards ┘        │                              ▲               ▲
                    └──> assignments ──────────────┘───────────────┘
-                            │                   (substage_templates)
-                        workers                     activity_log
+                          │     │               (substage_templates)
+                     workers   people               activity_log
+                             (a seat holds either)
 ```
 
 ## Three ideas the schema is built around
@@ -32,21 +33,51 @@ subtractions rather than arguments.
 Collapsing them into one field is how a business ends up disagreeing about
 whether a job slipped: everybody remembers a different one of the three.
 
-### 2 · A seat has a beginning and an end
+### 2 · A seat has a beginning, an end, and somebody in it
 
-`assignments` is the seat. `worker_id` null means declared but unfilled — an
-unfilled seat is a tracked, red thing rather than a missing row. `released_at`
-means somebody came off the job.
+`assignments` is the seat. Empty means declared but unfilled — a tracked, red
+thing rather than a missing row. `released_at` means somebody came off the job.
 
 Nothing is ever deleted, which is what makes "we were twelve, then fourteen, then
 eleven" a record instead of a memory. A released seat's tasks stop counting
 toward what is outstanding (`tasks_effective.is_live`) and stay readable in the
 history.
 
-`substage_templates.person_tasks` is the obligation kit — the visa, the two
-flights, the pass, the cover note — written by `open_person_tasks()` when a
-worker goes into a seat. That function is why onboarding somebody in week three
-reopens travel and immigration without anybody remembering to.
+**Who is in it is a worker or one of ours.** `worker_id` points at the bench;
+`person_id` points at a manager who is going out as well as running it, and a
+check constraint allows at most one. A manager at the dock needs the same permit,
+the same bed and the same yard pass as the blaster beside them, so they hold a
+seat rather than being a second kind of thing every screen has to remember.
+`seats_effective` resolves the two columns into one `occupant_name` and one
+`occupant_kind`, once, and everything downstream reads that.
+
+Running a job and going to it stay separate facts: assigning a manager opens
+planning and does not put them in a seat, because most of them do not go.
+
+**What that seat needs is a fact about the job, not the person.**
+`substage_templates.person_tasks` is the obligation kit, written by
+`open_person_tasks()` the moment somebody goes into a seat — which is why
+onboarding in week three reopens travel without anybody remembering to.
+
+| Kit | Per person | Waivable |
+|---|---|---|
+| Travel | Inbound flight, outbound flight, accommodation, airport transfer | No |
+| Insurance | Cover in place | No |
+| Shipyard entry | Yard pass & induction | No |
+| Immigration | Work permit / visa | **Yes** |
+
+Only the permit is a question. Anybody who goes needs a bed, a way to the dock,
+cover and a pass through the gate — asking would be a checkbox nobody ever
+unticks. A permit is the opposite — a Polish painter in Rotterdam
+needs none and the Ukrainian blaster beside him does, and that is true of *this
+job*, not of either man. So the waiver lives on the seat, in
+`assignments.waived_substages`, and `substage_templates.person_optional` says
+which kits may appear there at all.
+
+Waiving never deletes. `set_person_kit()` moves the tasks to `n_a` — a status
+the rollups already ignore — and anything already finished stays finished,
+because "we got him a visa and then found out he did not need one" is worth
+being able to read. Turning it back on reopens exactly what was set aside.
 
 ### 3 · Substages are rows, not an enum
 
@@ -65,7 +96,7 @@ the same machinery when that stage gets built.
 |---|---|
 | `people` | Parkk staff. `role` is admin or manager; `user_id` is null until there is an account to attach. |
 | `clients`, `vessels`, `shipyards` | Reference data, created inline from the project form. |
-| `workers` | Crew. Distinct from people: a worker holds a seat, a person runs one. |
+| `workers` | The bench. Distinct from people: a worker only ever holds a seat, a person can also run the job. |
 | `projects` | The three date pairs, the confirmed crew size, the gate stamps. |
 | `project_managers` | Who runs it. Plural, with `removed_at` rather than deletion. |
 | `assignments` | Seats, with `filled_at` and `released_at`. |
@@ -116,10 +147,11 @@ insists on prose.
 
 ## Derived, never stored
 
-Five views. No rollup is written by hand, so no two screens can disagree.
+Six views. No rollup is written by hand, so no two screens can disagree.
 
 | View | Gives |
 |---|---|
+| `seats_effective` | A seat plus who is in it — `occupant_name`, `occupant_kind`, `is_filled`, `is_live` — whether that is a worker or one of ours |
 | `tasks_effective` | Tasks plus `has_expiry_gap`, `is_overdue`, `is_live`, `severity`, and who they are for |
 | `project_substage_effective` | A workstream's counts and its derived status — seats for manpower, tasks for the rest |
 | `project_board` | One row per project: the clock, the drift, the managers, the crew, the flags |

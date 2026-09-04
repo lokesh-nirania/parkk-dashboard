@@ -42,16 +42,21 @@ The screen the rest of the app exists to fill. In order:
 5. **Planning** — the workstream cards. Status, progress, owner, and the control
    to add a task (or seats, for manpower). A card is a filter for the table below.
 6. **Crew** — seats, filled and unfilled, with released ones greyed at the
-   bottom carrying their reason.
+   bottom carrying their reason. Each filled seat carries what it needs for this
+   job: the work permit is a one-click tag, because "he does not need a visa" is
+   a correction somebody makes while reading the list. Flights, a bed, cover and
+   the yard pass are not tags — everybody who goes gets them. One of our own
+   in a seat is marked *ours*.
 7. **Tasks** — everything beneath every workstream, with a status control on each.
 8. **History** — everything that has happened to this project, newest first.
 
 ## Planning
 
 ### `/crew` — the trades
-Everyone who has held a seat. Records are created by filling a seat, not by a
-separate onboarding form. Shows current seats, past ones, outstanding
-obligations, and passport expiry.
+Everyone off the bench who has held a seat. Records are created by filling a
+seat, not by a separate onboarding form. Shows current seats, past ones,
+outstanding obligations, and passport expiry. Our own people are on
+[`/managers`](#managers--people) instead, even when they are on a job.
 
 ### `/crew/[id]` — one crew member
 Every seat they have held and everything owed against each, editable in place.
@@ -70,8 +75,10 @@ months is a flight nobody takes.
 
 ### `/managers` — people
 Parkk's own staff, as distinct from crew. Add somebody as a manager or an admin,
-see what they are running, deactivate them. A manager is a record today; the same
-row becomes a login when invites are switched on.
+deactivate them, and see two separate columns: what they are **running**, and
+what they are **going out** on. Most managers only ever fill the first; the ones
+who fly hold a seat on that project like anybody else. A manager is a record
+today; the same row becomes a login when invites are switched on.
 
 ### `/activity` — the trail
 Every write in the system, newest first. Date moves render from their structured

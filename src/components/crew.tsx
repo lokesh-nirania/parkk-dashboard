@@ -1,17 +1,20 @@
 'use client';
 
-import { useId } from 'react';
-import { addSeats, fillSeat, releaseSeat } from '@/lib/actions';
-import type { Seat, Worker } from '@/lib/types';
+import { useState } from 'react';
+import { addSeats, fillSeat, releaseSeat, setSeatKit } from '@/lib/actions';
+import { OPTIONAL_KITS, type Person, type Seat, type Worker } from '@/lib/types';
 import { InlineForm, Mini, INPUT } from '@/components/inline-form';
 
 /* ============================================================================
  * The crew list, which is the one thing on a project that will not hold still.
  *
- * A seat is a row with a beginning and an end. Filling one in week three writes
- * that person's obligations — visa, flights, pass, cover — which is what sends
- * travel and immigration back to unfinished. Releasing one ends the seat and
- * stops its work counting, without deleting a thing.
+ * A seat is a row with a beginning and an end, and whoever is in it is crew:
+ * a blaster off the bench, or the manager who decided to fly out and run the
+ * job from the dock. Filling one in week three writes that person's
+ * obligations — flights, a bed, a transfer, a pass, cover, and a permit unless
+ * this seat was excused one — which is what sends travel and immigration back
+ * to unfinished. Releasing one ends the seat and stops its work counting,
+ * without deleting a thing.
  * ========================================================================== */
 
 export function AddSeatsButton({ projectId }: { projectId: string }) {
@@ -33,51 +36,133 @@ export function AddSeatsButton({ projectId }: { projectId: string }) {
   );
 }
 
+const NEW = 'new';
+
 export function FillSeatButton({
-  seat, workers,
-}: { seat: Seat; workers: Worker[] }) {
-  const listId = useId();
+  seat, workers, managers,
+}: { seat: Seat; workers: Worker[]; managers: Person[] }) {
+  const filled = seat.is_filled;
 
   return (
     <InlineForm
-      trigger={seat.worker_id ? 'Replace' : 'Fill seat'}
+      trigger={filled ? 'Replace' : 'Fill seat'}
       title={`Seat ${seat.seat_no}`}
-      note="Picking a name writes that person's obligations across immigration, travel, insurance and the yard pass."
-      submit={seat.worker_id ? 'Replace' : 'Take the seat'}
+      note="Whoever takes it gets the obligations that come with going: flights, a bed, a transfer to the yard, a pass and cover."
+      submit={filled ? 'Replace' : 'Take the seat'}
       run={(fd) => fillSeat(seat.id, fd)}
-      width={300}
+      width={320}
     >
-      {(fe) => (
-        <>
-          <Mini label="Worker" error={fe.worker_name}>
-            <input
-              name="worker_name" list={listId} autoComplete="off" autoFocus
-              className={INPUT} placeholder="Ivan Petrov"
-            />
-            <datalist id={listId}>
-              {workers.map((w) => <option key={w.id} value={w.full_name} />)}
-            </datalist>
-          </Mini>
-          <p className="text-[10px] text-faint">
-            A name we do not know yet becomes a new crew record.
-          </p>
-
-          <div className="grid grid-cols-2 gap-2">
-            <Mini label="Trade">
-              <input name="trade" className={INPUT} placeholder="Blaster" defaultValue={seat.trade === 'Unassigned' ? '' : seat.trade} />
-            </Mini>
-            <Mini label="Mobilises">
-              <input type="date" name="mobilize_on" className={INPUT} defaultValue={seat.mobilize_on ?? ''} />
-            </Mini>
-          </div>
-        </>
-      )}
+      {(fe) => <FillFields seat={seat} workers={workers} managers={managers} fe={fe} />}
     </InlineForm>
   );
 }
 
+function FillFields({
+  seat, workers, managers, fe,
+}: {
+  seat: Seat; workers: Worker[]; managers: Person[];
+  fe: Record<string, string>;
+}) {
+  const current = seat.worker_id ? `worker:${seat.worker_id}`
+    : seat.person_id ? `manager:${seat.person_id}` : NEW;
+  const [who, setWho] = useState(current);
+
+  return (
+    <>
+      <Mini label="Who" error={fe.worker_name}>
+        <select
+          name="occupant" value={who} onChange={(e) => setWho(e.target.value)}
+          className={INPUT} autoFocus
+        >
+          <optgroup label="Crew">
+            {workers.map((w) => (
+              <option key={w.id} value={`worker:${w.id}`}>{w.full_name} — {w.trade}</option>
+            ))}
+          </optgroup>
+          <optgroup label="Ours, going out">
+            {managers.map((m) => (
+              <option key={m.id} value={`manager:${m.id}`}>{m.full_name}</option>
+            ))}
+          </optgroup>
+          <option value={NEW}>Somebody not on either list…</option>
+        </select>
+      </Mini>
+
+      {who === NEW && (
+        <>
+          <Mini label="Name">
+            <input name="worker_name" autoComplete="off" className={INPUT} placeholder="Ivan Petrov" />
+          </Mini>
+          <p className="text-[10px] text-faint">This becomes a new crew record.</p>
+        </>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <Mini label="Trade">
+          <input
+            name="trade" className={INPUT}
+            placeholder={who.startsWith('manager:') ? 'Project manager' : 'Blaster'}
+            defaultValue={seat.trade === 'Unassigned' ? '' : seat.trade}
+          />
+        </Mini>
+        <Mini label="Mobilises">
+          <input type="date" name="mobilize_on" className={INPUT} defaultValue={seat.mobilize_on ?? ''} />
+        </Mini>
+      </div>
+
+      <fieldset className="space-y-1.5 border-t border-line pt-2">
+        <legend className="sr-only">What this seat needs</legend>
+        {OPTIONAL_KITS.map((k) => (
+          <label key={k.key} className="flex items-center gap-2 text-[11px] text-muted">
+            <input
+              type="checkbox" name={`needs_${k.key}`} defaultChecked={!seat.waived_substages.includes(k.key)}
+              className="h-3 w-3 accent-[var(--st-progress)]"
+            />
+            Needs a {k.label.toLowerCase()} for this job
+          </label>
+        ))}
+        <p className="text-[10px] text-faint">
+          Flights, a bed and cover are not a choice — everybody who goes gets them.
+        </p>
+      </fieldset>
+    </>
+  );
+}
+
+/**
+ * The tag on a crew row. Not a form: one click, because "he does not need a
+ * visa" is a correction somebody makes while reading the list, and a dialog
+ * would mean they leave it wrong instead.
+ */
+export function KitToggle({ seat, kitKey, label }: { seat: Seat; kitKey: string; label: string }) {
+  const [busy, setBusy] = useState(false);
+  const required = !seat.waived_substages.includes(kitKey);
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      title={required
+        ? `${label} required — click if this seat does not need one`
+        : `No ${label.toLowerCase()} needed — click if it turns out they do`}
+      onClick={async () => {
+        setBusy(true);
+        await setSeatKit(seat.id, kitKey, !required);
+        setBusy(false);
+      }}
+      className={`rounded-full border px-2 py-0.5 text-[10px] leading-none transition ${
+        busy ? 'opacity-50' : ''
+      } ${required
+        ? 'border-line bg-surface text-muted hover:border-ink hover:text-ink'
+        : 'border-dashed border-line text-faint line-through hover:text-muted'}`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function ReleaseSeatButton({ seat, name }: { seat: Seat; name: string }) {
-  const filled = seat.worker_id !== null;
+  const filled = seat.is_filled;
   return (
     <InlineForm
       trigger={filled ? 'Release' : 'Drop seat'}

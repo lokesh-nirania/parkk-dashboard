@@ -22,12 +22,13 @@ alerting matters more than data entry, and entry has to get very fast.
 ---
 
 **3 · Does one obligation kit fit every job?**
-Filling a seat currently writes the same five things for everybody: a visa, two
-flights, a pass, a cover note. If the real checklist differs materially per
-destination country, per client or per project type, per-kit templates move up
-the list.
-→ *Changes:* `substage_templates.person_tasks` becomes a set keyed by something,
-and the admin screen for it arrives earlier.
+Filling a seat writes seven things: four travel, a permit, a pass, a cover note.
+A seat can be excused the permit one click at a time, which covers
+"this half of the crew is local". What it does not cover is a kit whose *contents*
+differ — a country that wants a medical and a police certificate, a client that
+wants a drug test.
+→ *Changes:* `substage_templates.person_tasks` becomes a set keyed by
+destination or client, and the admin screen for it arrives earlier.
 
 ---
 
@@ -61,7 +62,15 @@ obligations: hosting region, access logging, retention, export controls.
 
 ---
 
-**8 · When people are added mid-job, is that a variation?**
+**8 · Do managers who go out get counted as crew commercially?**
+They hold a seat, so they show in `seats_total` and in manpower. If a client is
+billed for twelve and the twelfth is our own supervisor, the board is right about
+the yard and wrong about the invoice.
+→ *Changes:* a billable flag on the seat, and manpower counts two numbers.
+
+---
+
+**9 · When people are added mid-job, is that a variation?**
 The system handles the mechanics: seats are added, obligations are written,
 workstreams reopen. What it does not do is price it. If adding two people in week
 three is commercially a variation, that record belongs next to the crew change
@@ -71,14 +80,14 @@ its own rather than staying the confirmed number.
 
 ---
 
-**9 · Who keeps this updated, daily?**
+**10 · Who keeps this updated, daily?**
 The honest answer decides whether any of this succeeds. If it is one person,
 bulk edit and CSV import are not a nicety.
 → *Changes:* entry speed becomes the priority over every new screen.
 
 ---
 
-**10 · Hull jobs — where does the paint spec live?**
+**11 · Hull jobs — where does the paint spec live?**
 If quantities come from a spec — area × coats — that is structured data, not an
 attachment on an email, and logistics quantities become derived rather than typed.
 → *Changes:* a technical scope object, and a new kind of task.
@@ -102,3 +111,4 @@ writing more code.
 | 8 | | | |
 | 9 | | | |
 | 10 | | | |
+| 11 | | | |

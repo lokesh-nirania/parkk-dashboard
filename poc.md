@@ -6,12 +6,17 @@ which of them is about to make you late.
 
 ## The problem, concretely
 
-A hull job is confirmed for the 14th with twelve people. Between now and then:
-twelve visas, twenty-four flights, twelve yard passes, twelve insurance
-certificates, and sixty drums of primer that ship by sea. Each one is somebody's
-job, some of them belong to the client, and one of them — a yard pass issued for
-30 days on a job that runs 40 — is already wrong in a way nobody will notice
-until the crew is at the gate.
+A hull job is confirmed for the 14th with twelve people — eleven off the bench
+and the manager who is going out to run it. Between now and then: seven work
+permits and five that are not needed, twenty-four flights, twelve hotel rooms,
+twelve yard passes, twelve insurance certificates, and sixty drums of primer that
+ship by sea. Each one is somebody's job, some of them belong to the client, and
+one of them — a yard pass issued for 30 days on a job that runs 40 — is already
+wrong in a way nobody will notice until the crew is at the gate.
+
+Which five need no permit is not a property of those five men. It is a property
+of *this job*: they need none in Rotterdam and all of them need one in Dubai.
+Every one of the twelve needs a bed either way.
 
 Then in week three the client adds two people, and every one of those obligations
 starts again for them alone.

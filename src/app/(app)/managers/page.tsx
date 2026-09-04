@@ -19,11 +19,22 @@ type Load = { person_id: string; project_id: string; code: string; name: string 
 export default async function ManagersPage() {
   const supabase = await createClient();
 
-  const [{ data: peopleRows, error }, { data: assignments }] = await Promise.all([
+  const [
+    { data: peopleRows, error },
+    { data: assignments },
+    { data: seatRows },
+    { data: projectRows },
+  ] = await Promise.all([
     supabase.from('people').select('*').order('is_active', { ascending: false }).order('full_name'),
     supabase.from('project_managers')
       .select('person_id, projects(id, code, name, status)')
       .is('removed_at', null),
+    // Running a job and going to it are different facts. A manager can do
+    // either, both, or neither, so they are two columns and not one.
+    supabase.from('seats_effective')
+      .select('person_id, project_id, seat_no')
+      .eq('occupant_kind', 'manager').eq('is_live', true),
+    supabase.from('projects').select('id, code'),
   ]);
 
   const people = (peopleRows ?? []) as Person[];
@@ -41,6 +52,16 @@ export default async function ManagersPage() {
       name: row.projects.name,
     });
     loadBy.set(row.person_id, list);
+  }
+
+  const codeOf = new Map(((projectRows ?? []) as { id: string; code: string }[])
+    .map((r) => [r.id, r.code]));
+
+  const goingBy = new Map<string, { project_id: string; code: string }[]>();
+  for (const r of (seatRows ?? []) as { person_id: string; project_id: string }[]) {
+    const code = codeOf.get(r.project_id);
+    if (!code) continue;
+    goingBy.set(r.person_id, [...(goingBy.get(r.person_id) ?? []), { project_id: r.project_id, code }]);
   }
 
   const active = people.filter((p) => p.is_active);
@@ -67,20 +88,21 @@ export default async function ManagersPage() {
         <table className="w-full min-w-[780px] border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-line text-left">
-              {['Name', 'Role', 'Contact', 'Signs in', 'Running', ''].map((h) => (
+              {['Name', 'Role', 'Contact', 'Signs in', 'Running', 'Going out', ''].map((h) => (
                 <th key={h} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {people.length === 0 && (
-              <tr><td colSpan={6}><Empty>
+              <tr><td colSpan={7}><Empty>
                 Nobody yet. The person who signed in is added automatically as an admin.
               </Empty></td></tr>
             )}
 
             {[...active, ...inactive].map((p) => {
               const load = loadBy.get(p.id) ?? [];
+              const going = goingBy.get(p.id) ?? [];
               return (
                 <tr key={p.id} className={`border-b border-line last:border-0 ${p.is_active ? '' : 'opacity-55'}`}>
                   <td className="px-4 py-3">
@@ -106,6 +128,22 @@ export default async function ManagersPage() {
                           <Link key={l.project_id} href={`/projects/${l.project_id}`}
                                 className="font-mono text-[11px] text-muted hover:text-ink">
                             {l.code}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  {/* A seat, not a supervision line: they need the same permit,
+                      bed and yard pass as anybody else on that job. */}
+                  <td className="px-4 py-3">
+                    {going.length === 0 ? (
+                      <span className="text-[12px] text-faint">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {going.map((g) => (
+                          <Link key={g.project_id} href={`/projects/${g.project_id}`}
+                                className="font-mono text-[11px] text-ink hover:underline">
+                            {g.code}
                           </Link>
                         ))}
                       </div>

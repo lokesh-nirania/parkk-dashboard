@@ -54,7 +54,8 @@ from activity_log l where l.item_id = a.id and l.action = 'seat_released';
 -- Not shown anywhere, but a seat created after the job it belongs to reads wrong
 -- in the database too.
 update assignments a set created_at = coalesce(p.planning_started_at, p.created_at), filled_at =
-  case when a.worker_id is null then null else coalesce(p.planning_started_at, p.created_at) end
+  case when a.worker_id is null and a.person_id is null then null
+       else coalesce(p.planning_started_at, p.created_at) end
 from projects p where p.id = a.project_id and a.created_at > coalesce(p.planning_started_at, p.created_at);
 
 update tasks t set created_at = coalesce(p.planning_started_at, p.created_at)
