@@ -1,0 +1,1142 @@
+<title>Drydock Readiness Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+:root{
+  --bg:#F1F3F2; --surface:#FFFFFF; --surface-2:#E9EDEC;
+  --ink:#111A1D; --ink-2:#3D4C51; --ink-3:#6A797E;
+  --line:#D5DCDB; --line-2:#C2CCCB;
+  --accent:#0B6E63; --accent-2:#095C53; --accent-soft:#E1EFEC;
+  --ok:#2C7A50; --ok-bg:#E2F0E8;
+  --warn:#9E6B18; --warn-bg:#F6EBD8;
+  --crit:#A33125; --crit-bg:#F7E3E0;
+  --wait:#3F6597; --wait-bg:#E3EAF4;
+  --na:#78878B; --na-bg:#E8ECEC;
+  --hazard:#C9A227;
+  --shadow:0 1px 2px rgba(17,26,29,.05), 0 8px 24px -16px rgba(17,26,29,.28);
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --body:'Source Serif 4',Georgia,'Times New Roman',serif;
+  --mono:'IBM Plex Mono','SF Mono',Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C1316; --surface:#121B1F; --surface-2:#18242A;
+    --ink:#E4EBEA; --ink-2:#B4C2C3; --ink-3:#8B9B9E;
+    --line:#243338; --line-2:#33454B;
+    --accent:#43BFAD; --accent-2:#66D2C2; --accent-soft:#0F2E2B;
+    --ok:#63BE88; --ok-bg:#132A1E;
+    --warn:#D3A257; --warn-bg:#2C2416;
+    --crit:#E17968; --crit-bg:#311916;
+    --wait:#84A9DC; --wait-bg:#16212F;
+    --na:#7E8E92; --na-bg:#1B2529;
+    --hazard:#C9A227;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C1316; --surface:#121B1F; --surface-2:#18242A;
+  --ink:#E4EBEA; --ink-2:#B4C2C3; --ink-3:#8B9B9E;
+  --line:#243338; --line-2:#33454B;
+  --accent:#43BFAD; --accent-2:#66D2C2; --accent-soft:#0F2E2B;
+  --ok:#63BE88; --ok-bg:#132A1E;
+  --warn:#D3A257; --warn-bg:#2C2416;
+  --crit:#E17968; --crit-bg:#311916;
+  --wait:#84A9DC; --wait-bg:#16212F;
+  --na:#7E8E92; --na-bg:#1B2529;
+  --hazard:#C9A227;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.65;margin:0;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---- shell ---- */
+.masthead{border-bottom:1px solid var(--line);background:var(--surface)}
+.masthead .inner{max-width:1240px;margin:0 auto;padding:4.5rem 2rem 3rem;display:flex;flex-direction:column;gap:1.25rem}
+.kicker{font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
+.kicker span.dot{color:var(--line-2)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(2.2rem,5vw,3.3rem);line-height:1.03;letter-spacing:-.025em;margin:0;max-width:18ch;text-wrap:balance}
+.standfirst{font-size:1.15rem;color:var(--ink-2);max-width:62ch;margin:0}
+.meta{display:flex;gap:2rem;flex-wrap:wrap;font-family:var(--mono);font-size:.75rem;color:var(--ink-3);border-top:1px solid var(--line);padding-top:1.25rem;margin-top:.5rem}
+.meta b{display:block;color:var(--ink);font-weight:500;font-size:.8rem;margin-top:.2rem}
+
+.doc{max-width:1240px;margin:0 auto;padding:0 2rem 6rem;display:grid;grid-template-columns:minmax(0,1fr);gap:3rem}
+@media(min-width:1100px){.doc{grid-template-columns:216px minmax(0,1fr);gap:3.5rem;align-items:start}}
+.rail{display:none}
+@media(min-width:1100px){
+  .rail{display:block;position:sticky;top:0;padding:3rem 0;max-height:100vh;overflow-y:auto}
+}
+.rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.1rem}
+.rail a{display:grid;grid-template-columns:1.9rem 1fr;gap:.4rem;font-family:var(--mono);font-size:.735rem;line-height:1.35;color:var(--ink-3);text-decoration:none;padding:.35rem .5rem;border-radius:3px;border-left:2px solid transparent}
+.rail a:hover{color:var(--ink);background:var(--surface);border-left-color:var(--accent)}
+.rail .rl-num{color:var(--line-2)}
+.rail a:hover .rl-num{color:var(--accent)}
+
+main{padding-top:3rem;min-width:0}
+section{margin-bottom:4rem;scroll-margin-top:1.5rem}
+section>*{max-width:70ch}
+h2{font-family:var(--display);font-weight:600;font-size:1.7rem;letter-spacing:-.015em;line-height:1.15;margin:0 0 .35rem;text-wrap:balance}
+.sec-num{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:.7rem}
+.lede{color:var(--ink-2);font-size:1.06rem;margin:.4rem 0 1.6rem}
+h3{font-family:var(--display);font-weight:600;font-size:1.08rem;letter-spacing:-.005em;margin:2.2rem 0 .6rem}
+h4{font-family:var(--mono);font-weight:600;font-size:.76rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:1.6rem 0 .5rem}
+p{margin:0 0 1rem}
+ul,ol{margin:0 0 1rem;padding-left:1.3rem}
+li{margin-bottom:.4rem}
+li::marker{color:var(--ink-3)}
+strong{font-weight:600}
+code{font-family:var(--mono);font-size:.855em;background:var(--surface-2);color:var(--ink);padding:.1em .34em;border-radius:3px;border:1px solid var(--line)}
+hr{border:0;border-top:1px solid var(--line);margin:2.5rem 0}
+
+/* ---- wide breakout ---- */
+.wide{max-width:none}
+@media(min-width:1100px){.wide{width:calc(100% + 6rem);margin-left:0}}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface);box-shadow:var(--shadow)}
+
+/* ---- tables ---- */
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:.775rem;font-variant-numeric:tabular-nums}
+thead th{text-align:left;font-weight:600;font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);padding:.7rem .85rem;border-bottom:1px solid var(--line-2);white-space:nowrap;background:var(--surface-2)}
+tbody td{padding:.62rem .85rem;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2);line-height:1.5}
+tbody tr:last-child td{border-bottom:0}
+tbody td:first-child{color:var(--ink);font-weight:500;white-space:nowrap}
+td .n{color:var(--ink-3);font-weight:400;white-space:normal}
+
+/* ---- chips ---- */
+.chip{display:inline-flex;align-items:center;gap:.32rem;font-family:var(--mono);font-size:.665rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:.2rem .44rem;border-radius:3px;border:1px solid;white-space:nowrap;line-height:1.3}
+.chip::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:none}
+.c-ok{color:var(--ok);background:var(--ok-bg);border-color:color-mix(in srgb,var(--ok) 30%,transparent)}
+.c-warn{color:var(--warn);background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+.c-crit{color:var(--crit);background:var(--crit-bg);border-color:color-mix(in srgb,var(--crit) 30%,transparent)}
+.c-wait{color:var(--wait);background:var(--wait-bg);border-color:color-mix(in srgb,var(--wait) 30%,transparent)}
+.c-na{color:var(--na);background:var(--na-bg);border-color:color-mix(in srgb,var(--na) 28%,transparent)}
+.c-na::before{background:transparent;border:1px solid currentColor}
+.c-idle{color:var(--ink-3);background:var(--surface-2);border-color:var(--line-2)}
+
+/* ---- callouts ---- */
+.note{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--surface);border-radius:0 5px 5px 0;padding:1.05rem 1.25rem;margin:1.5rem 0;font-size:.98rem;color:var(--ink-2)}
+.note .tag{font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:.4rem;font-weight:600}
+.note.risk{border-left-color:var(--crit)}
+.note.risk .tag{color:var(--crit)}
+.note p:last-child{margin-bottom:0}
+</style>
+<style>
+/* ---- phase rail ---- */
+.phases{display:flex;gap:.4rem;flex-wrap:wrap;margin:1.5rem 0 2rem}
+.phase{flex:1 1 130px;min-width:130px;background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:0 0 5px 5px;padding:.75rem .8rem}
+.phase .pn{font-family:var(--mono);font-size:.62rem;letter-spacing:.12em;color:var(--accent);text-transform:uppercase}
+.phase .pt{font-family:var(--display);font-weight:600;font-size:.92rem;margin:.25rem 0 .35rem;letter-spacing:-.01em}
+.phase ul{margin:0;padding-left:.95rem;font-family:var(--mono);font-size:.68rem;line-height:1.5;color:var(--ink-3)}
+.phase li{margin:0}
+.phase.p-exec{border-top-color:var(--wait)}.phase.p-exec .pn{color:var(--wait)}
+.phase.p-close{border-top-color:var(--ink-3)}.phase.p-close .pn{color:var(--ink-3)}
+
+/* ---- state flow ---- */
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;font-family:var(--mono);font-size:.7rem;margin:1rem 0 1.5rem;padding:1rem;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.st{padding:.28rem .5rem;border:1px solid var(--line-2);border-radius:3px;background:var(--surface-2);color:var(--ink);white-space:nowrap;letter-spacing:.03em}
+.st.term-ok{border-color:color-mix(in srgb,var(--ok) 45%,transparent);background:var(--ok-bg);color:var(--ok)}
+.st.term-no{border-color:color-mix(in srgb,var(--crit) 45%,transparent);background:var(--crit-bg);color:var(--crit)}
+.st.term-wait{border-color:color-mix(in srgb,var(--wait) 45%,transparent);background:var(--wait-bg);color:var(--wait)}
+.arw{color:var(--line-2);flex:none}
+.flow .br{flex-basis:100%;height:0}
+
+/* ---- entity catalog ---- */
+.dom{margin:1.75rem 0}
+.dom-h{font-family:var(--mono);font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:.45rem;margin-bottom:.9rem;display:flex;justify-content:space-between;gap:1rem}
+.dom-h em{font-style:normal;color:var(--ink-3);letter-spacing:.06em;text-transform:none}
+.ents{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:.6rem}
+.ent{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:.7rem .8rem;box-shadow:var(--shadow)}
+.ent b{display:block;font-family:var(--mono);font-size:.775rem;font-weight:600;color:var(--ink);letter-spacing:-.01em}
+.ent p{margin:.3rem 0 .45rem;font-size:.86rem;line-height:1.45;color:var(--ink-2)}
+.ent .f{font-family:var(--mono);font-size:.655rem;color:var(--ink-3);line-height:1.6;word-break:break-word}
+.ent.trk{border-left:3px solid var(--accent)}
+
+/* ---- rollup ---- */
+.roll{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1.4rem;margin:1.5rem 0;box-shadow:var(--shadow)}
+.band{display:grid;grid-template-columns:5.5rem minmax(0,1fr);gap:1rem;align-items:center}
+.band .bl{font-family:var(--mono);font-size:.62rem;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);text-align:right;line-height:1.4}
+.band .bc{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;min-width:0}
+.tick{font-family:var(--mono);font-size:.66rem;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:3px;padding:.22rem .42rem;display:inline-flex;gap:.4rem;align-items:center;white-space:nowrap}
+.reduce{display:grid;grid-template-columns:5.5rem minmax(0,1fr);gap:1rem;margin:.5rem 0}
+.reduce .rr{grid-column:2;font-family:var(--mono);font-size:.65rem;color:var(--ink-3);border-left:2px solid var(--line-2);padding:.5rem 0 .5rem .8rem;line-height:1.6}
+.reduce .rr b{color:var(--accent);font-weight:500}
+
+/* ---- board mock ---- */
+.board thead th:first-child{position:sticky;left:0;z-index:2}
+.board tbody td:first-child{position:sticky;left:0;background:var(--surface);z-index:1;border-right:1px solid var(--line)}
+.board td{padding:.5rem .6rem}
+.board .vs{color:var(--ink);font-weight:500}.board .vs small{display:block;color:var(--ink-3);font-weight:400;font-size:.9em}
+.tminus{font-weight:600}
+.tminus.hot{color:var(--crit)}
+
+/* ---- decisions ---- */
+.dec{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:.95rem 1.1rem;margin-bottom:.6rem;box-shadow:var(--shadow)}
+.dec .dq{font-family:var(--display);font-weight:600;font-size:.97rem;margin-bottom:.3rem}
+.dec .da{font-size:.9rem;color:var(--ink-2);margin:0}
+.dec .da em{font-style:normal;font-family:var(--mono);font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin-right:.45rem;font-weight:600}
+
+/* ---- question bank ---- */
+.hazard{height:7px;border-radius:2px;background:repeating-linear-gradient(45deg,var(--hazard) 0 9px,transparent 9px 18px);opacity:.55;margin:0 0 1.25rem;max-width:none}
+.qg{margin:1.75rem 0}
+.qg>h3{display:flex;gap:.7rem;align-items:baseline;margin:0 0 .1rem;border-bottom:1px solid var(--line);padding-bottom:.5rem}
+.qg>h3 .gl{font-family:var(--mono);font-size:.7rem;color:var(--accent);letter-spacing:.1em}
+.qg>p{font-size:.92rem;color:var(--ink-3);margin:.5rem 0 .7rem}
+.qg ol{counter-reset:none;list-style:decimal;padding-left:2.1rem;font-size:.97rem}
+.qg ol li{margin-bottom:.45rem;color:var(--ink-2)}
+.qg ol li::marker{font-family:var(--mono);font-size:.75rem;color:var(--ink-3)}
+.qg ol li b{color:var(--ink);font-weight:600}
+</style>
+
+<header class="masthead">
+  <div class="inner">
+    <div class="kicker"><span>System Design</span><span class="dot">/</span><span>v0.1 Draft</span><span class="dot">/</span><span>Ship Repair Operations</span></div>
+    <h1>Drydock Readiness Blueprint</h1>
+    <p class="standfirst">An admin-scope dashboard for hull repair and supervision projects — one place to answer, for every live project, the only question that matters the night before commencement: <em>is anything still missing?</em></p>
+    <div class="meta">
+      <div>Prepared for<b>Parkk Marine (working name)</b></div>
+      <div>Scope<b>Admin role only, v1</b></div>
+      <div>Status<b>Open for review</b></div>
+      <div>Sections<b>16, plus 78 client questions</b></div>
+    </div>
+  </div>
+</header>
+
+<div class="doc">
+<nav class="rail" aria-label="Contents">
+  <ol>
+    <li><a href="#s1"><span class="rl-num">01</span><span>Problem &amp; scope</span></a></li>
+    <li><a href="#s2"><span class="rl-num">02</span><span>The central design call</span></a></li>
+    <li><a href="#s3"><span class="rl-num">03</span><span>Domain &amp; project types</span></a></li>
+    <li><a href="#s4"><span class="rl-num">04</span><span>Lifecycle &amp; state machines</span></a></li>
+    <li><a href="#s5"><span class="rl-num">05</span><span>Entity catalog</span></a></li>
+    <li><a href="#s6"><span class="rl-num">06</span><span>Readiness engine</span></a></li>
+    <li><a href="#s7"><span class="rl-num">07</span><span>Mobilization model</span></a></li>
+    <li><a href="#s8"><span class="rl-num">08</span><span>Logistics &amp; custody</span></a></li>
+    <li><a href="#s9"><span class="rl-num">09</span><span>Execution &amp; variations</span></a></li>
+    <li><a href="#s10"><span class="rl-num">10</span><span>Commercial</span></a></li>
+    <li><a href="#s11"><span class="rl-num">11</span><span>Screens</span></a></li>
+    <li><a href="#s12"><span class="rl-num">12</span><span>Schema &amp; stack</span></a></li>
+    <li><a href="#s13"><span class="rl-num">13</span><span>Delivery phases</span></a></li>
+    <li><a href="#s14"><span class="rl-num">14</span><span>Decisions for you</span></a></li>
+    <li><a href="#s15"><span class="rl-num">15</span><span>Questions for the company</span></a></li>
+    <li><a href="#s16"><span class="rl-num">16</span><span>Assumptions &amp; risks</span></a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="s1">
+  <span class="sec-num">§ 01 — Problem &amp; scope</span>
+  <h2>What this system is actually for</h2>
+  <p class="lede">The company runs several ship repair projects at once, across countries, with workers sourced from other countries again. The planning that makes a project possible lives in spreadsheets, WhatsApp threads and people's heads.</p>
+
+  <p>The stated pain is precise, and worth quoting back: <em>tomorrow is a start date, and there is no single interface to check whether every worker has immigration and accommodation settled, whether they have reached site, whether logistics are sorted, whether equipment has shipped and arrived, and what is still pending.</em></p>
+
+  <p>That sentence is the product. Everything else in this document exists to make that one screen answerable in a single database query. Two consequences follow, and they should shape every later decision:</p>
+
+  <ul>
+    <li><strong>This is a tracking system, not a doing system.</strong> Visas are filed elsewhere. Quotes are built in Excel. Flights are booked on airline sites. Paint is bought from a supplier. The dashboard records <em>state</em> and <em>evidence</em>, and its value is aggregation — not replacing any of those workflows.</li>
+    <li><strong>Status must be structured enough to aggregate.</strong> A free-text note saying "visa in progress" is worth nothing to a portfolio board. The discipline of this design is deciding exactly which things get typed status and which do not.</li>
+  </ul>
+
+  <h4>In scope for v1</h4>
+  <ul>
+    <li>Admin role only — a small number of trusted users (the Abhi / Varsha level from the current tracker) doing all data entry.</li>
+    <li>Quotation pipeline through project delivery through invoicing status.</li>
+    <li>Both project types: hull jobs and third-party supervision.</li>
+    <li>Multi-country, multi-currency as <em>data</em>, not as tax or accounting logic.</li>
+  </ul>
+
+  <h4>Explicit non-goals</h4>
+  <ul>
+    <li><strong>No integration with the Parkk Marine website or portal.</strong> Standalone system, confirmed.</li>
+    <li>Not a quoting or pricing engine — the estimate is authored outside and attached here.</li>
+    <li>Not an accounting system — invoices are tracked as <em>sent / paid</em>, nothing more.</li>
+    <li>Not an HRIS or payroll system, and not a warehouse stock system of record (see §8 for the boundary).</li>
+    <li>No client-facing portal, no PM mobile app, no worker self-service — all deliberately deferred, but the data model in §5 is shaped so they can be added without a rewrite.</li>
+  </ul>
+
+  <div class="note">
+    <span class="tag">Design posture</span>
+    <p>Build for <strong>one honest board and many boring forms</strong>. The forms are unglamorous data entry; the board is the entire return on that entry. Any modelling choice that makes the board weaker to make a form prettier is the wrong choice.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <span class="sec-num">§ 02 — The central design call</span>
+  <h2>Typed where you aggregate, generic where you adapt</h2>
+  <p class="lede">You arrived at the generic-task idea mid-sentence and then immediately felt its flaw. That instinct was right, and it deserves to be the architectural spine rather than a passing doubt.</p>
+
+  <p>A fully generic task tree ("task has subtasks, subtasks have progress") is seductive because it models anything. But it cannot answer <em>"have all required consumables reached site?"</em> — because that question is not about completion, it is about <strong>coverage</strong>: 40 of 60 drums delivered is neither done nor not-done. Nor can it answer <em>"is anyone's insurance going to lapse mid-project?"</em>, which is about <strong>validity windows</strong>, not status. Generic tasks flatten exactly the structure the dashboard exists to surface.</p>
+
+  <p>The opposite failure is equally real: hard-coding every requirement type means a new client demanding drug tests, or a new country demanding a police clearance, becomes a schema migration.</p>
+
+  <p>So: three layers, with a sharp test for which layer a thing belongs in.</p>
+
+  <div class="note">
+    <span class="tag">The test</span>
+    <p>Would an admin ever want to <strong>filter, count, or traffic-light this across projects</strong>? If yes, it is a typed trackable with typed fields. If no, it is a checklist item or a free task. "Passport scan collected" passes the test. "Call the yard about the crane slot" does not.</p>
+  </div>
+
+  <h3>Layer 1 — Trackables</h3>
+  <p>Modelled records for the things that recur on every project and drive readiness: assignments, immigration cases, travel legs, accommodation, yard passes, insurance policies, equipment allocations, consumable lines, shipments, reporting obligations, invoices. Each has real fields — a visa case has a country and a stage, a shipment has an ETA.</p>
+
+  <h3>Layer 2 — The tracking contract</h3>
+  <p>This is the load-bearing idea. Every trackable, whatever its type, exposes the <em>same</em> small set of fields (§6). Because a visa case and a paint delivery both carry <code>status</code>, <code>due_date</code>, <code>responsible_party</code> and <code>valid_from/valid_to</code>, entirely different things roll up onto one board without special-casing. The contract is what makes heterogeneity survivable.</p>
+
+  <h3>Layer 3 — Tasks &amp; checklists</h3>
+  <p>A generic, polymorphic task attachable to any entity, with subtasks, assignee and due date — for the long tail your notes describe as <em>"tasks (jobs)"</em>. Plus project-level checklist templates for the per-client oddities. These roll up as a single extra dimension, so they are visible without polluting the typed ones.</p>
+
+  <p>The pattern to keep in mind: <strong>Layer 1 says what exists, Layer 2 says how it is going, Layer 3 catches what we did not anticipate.</strong> When a Layer 3 checklist item shows up on 80% of projects, promote it to Layer 1.</p>
+</section>
+
+<section id="s3">
+  <span class="sec-num">§ 03 — Domain &amp; project types</span>
+  <h2>What a project is</h2>
+  <p class="lede">Two types, sharing most of their planning burden and almost none of their execution.</p>
+
+  <div class="scroll wide" style="margin:1.5rem 0">
+    <table>
+      <thead><tr><th>Aspect</th><th>Hull job</th><th>Supervision</th></tr></thead>
+      <tbody>
+        <tr><td>What we deliver</td><td class="n">Painting and steel repair, executed by our own workforce</td><td class="n">A third party executes; we supervise and report to the client</td></tr>
+        <tr><td>Technical scope</td><td class="n">Initial hull condition + paint specification drive the whole job</td><td class="n">Scope of supervision, inspection points, reporting deliverable</td></tr>
+        <tr><td>Manpower</td><td class="n">Large — blasters, painters, welders, fitters, riggers, supervisors</td><td class="n">Small — one or a few supervisors / superintendents</td></tr>
+        <tr><td>Mobilization burden</td><td class="n">Full: visas, travel, accommodation, yard passes, insurance for everyone</td><td class="n">Identical in kind, smaller in volume — do <em>not</em> model it separately</td></tr>
+        <tr><td>Logistics</td><td class="n">Heavy: equipment shipment, consumables, warehouse packing</td><td class="n">Light: instruments (DFT gauges, cameras), sometimes nothing</td></tr>
+        <tr><td>Progress signal</td><td class="n">Physical work completed against plan</td><td class="n">Reports delivered on schedule — tracked as done / not done only</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The important modelling conclusion: <strong>type affects which dimensions apply, not the shape of the model.</strong> A supervision project simply has an empty equipment dimension and a heavier reporting dimension. Do not fork the schema; mark dimensions <span class="chip c-na">not applicable</span> and let the readiness engine skip them honestly.</p>
+
+  <h3>Hull job technical scope</h3>
+  <p>Your note — <em>"initial condition, paint specification"</em> — points at something the tracker should hold, because it is what the quote is priced from and what the consumables list is derived from.</p>
+
+  <div class="ents" style="margin:1rem 0">
+    <div class="ent"><b>HullJobSpec</b><p>The technical basis of a hull job. Referenced by the quote and by the consumables plan.</p><div class="f">initial_condition · survey_report_ref · areas[] (hull / boot-top / topside / tanks) · area_m2 · surface_prep_standard · paint_system · manufacturer · coats[] · target_dft · inspection_regime</div></div>
+    <div class="ent"><b>Vessel</b><p>Ships recur as clients return. Keep vessel history across projects.</p><div class="f">name · imo · flag · type · owner_client_id · loa · notes</div></div>
+    <div class="ent"><b>Shipyard</b><p>Access rules differ per yard and are the reusable part.</p><div class="f">name · port · country · access_requirements[] · lead_time_days · contact</div></div>
+  </div>
+
+  <div class="note">
+    <span class="tag">Why the paint spec is in the model</span>
+    <p>Coats × area × spreading rate is roughly the paint volume, which is roughly the consumables line items, which is what the warehouse packs and ships. Even if v1 does not compute that, holding the spec as structured fields means the <em>required quantity</em> side of the coverage check in §6 has somewhere to come from later. Storing it as a PDF attachment closes that door.</p>
+  </div>
+
+  <h3>Glossary</h3>
+  <div class="scroll" style="margin:1rem 0">
+    <table>
+      <thead><tr><th>Term</th><th>Meaning in this system</th></tr></thead>
+      <tbody>
+        <tr><td>Quotation</td><td class="n">A versioned commercial offer. Becomes a project when accepted.</td></tr>
+        <tr><td>Project</td><td class="n">One job on one vessel for one client, with a timeline.</td></tr>
+        <tr><td>Requirement</td><td class="n">A need declared during planning — "3 blasters", "60 drums of primer".</td></tr>
+        <tr><td>Assignment</td><td class="n">A named person (or an unfilled slot) attached to a project for a date range.</td></tr>
+        <tr><td>Mobilization item</td><td class="n">One clearance a person needs before they can work: visa, flight, hotel, pass, insurance.</td></tr>
+        <tr><td>Dimension</td><td class="n">A readiness category shown as one traffic light on the board.</td></tr>
+        <tr><td>Trackable</td><td class="n">Any record that carries the §6 tracking contract.</td></tr>
+        <tr><td>Variation</td><td class="n">Scope creep, formalised — extra work that may require extra people and travel.</td></tr>
+        <tr><td>Demobilization</td><td class="n">Sending people home and equipment onward, plus reconciliation.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+<section id="s4">
+  <span class="sec-num">§ 04 — Lifecycle &amp; state machines</span>
+  <h2>How a job moves</h2>
+  <p class="lede">The current spreadsheet already encodes the lifecycle — Quote, Confirmation, Project planning, Project start, Invoicing, each with an owner. That column structure is a gift: it is the phase model, already agreed internally.</p>
+
+  <div class="phases wide">
+    <div class="phase"><span class="pn">Phase 01</span><div class="pt">Quote</div><ul><li>Scope &amp; condition</li><li>Rough headcount</li><li>Indicative timeline</li><li>Issue &amp; revise</li></ul></div>
+    <div class="phase"><span class="pn">Phase 02</span><div class="pt">Confirmation</div><ul><li>Client acceptance</li><li>Firm dates</li><li>Firm team size</li><li>PO / contract</li></ul></div>
+    <div class="phase"><span class="pn">Phase 03</span><div class="pt">Planning</div><ul><li>Assign PM</li><li>Manpower</li><li>Immigration</li><li>Travel &amp; hotels</li><li>Yard access</li><li>Insurance</li><li>Logistics</li></ul></div>
+    <div class="phase p-exec"><span class="pn">Phase 04</span><div class="pt">In progress</div><ul><li>Commencement</li><li>Daily meeting</li><li>Progress report</li><li>Client comms</li><li>Blockers</li><li>Variations</li></ul></div>
+    <div class="phase p-close"><span class="pn">Phase 05</span><div class="pt">Closeout</div><ul><li>Final report</li><li>Demob travel</li><li>Equipment return</li><li>Reconciliation</li></ul></div>
+    <div class="phase p-close"><span class="pn">Phase 06</span><div class="pt">Invoicing</div><ul><li>Invoices raised</li><li>Sent</li><li>Paid</li><li>Closed</li></ul></div>
+  </div>
+
+  <h3>Quotation state machine</h3>
+  <p>Quotes are <strong>versioned and immutable</strong>. A revision creates a new version rather than editing the old one, so "what did we actually send in March?" always has an answer, and win/loss analysis has something to analyse. One version is flagged current.</p>
+
+  <div class="flow wide">
+    <span class="st">DRAFT</span><span class="arw">→</span>
+    <span class="st term-wait">SENT</span><span class="arw">→</span>
+    <span class="st term-wait">UNDER_CLIENT_REVIEW</span><span class="arw">→</span>
+    <span class="st term-ok">ACCEPTED</span><span class="arw">→</span>
+    <span class="st term-ok">CONVERTED</span>
+    <span class="br"></span>
+    <span class="st">REVISION_REQUESTED</span><span class="arw">↺ new version →</span><span class="st">DRAFT</span>
+    <span class="arw">|</span>
+    <span class="st term-no">DECLINED</span><span class="arw">→</span><span class="st term-no">CLOSED_LOST</span>
+    <span class="arw">|</span>
+    <span class="st">EXPIRED</span><span class="arw">|</span><span class="st">WITHDRAWN</span>
+  </div>
+
+  <p>On <code>ACCEPTED → CONVERTED</code>, the system creates the project and <strong>copies the estimated headcount into manpower requirement rows</strong> as a starting plan. This is the single highest-value automation in v1: it means planning begins pre-populated instead of from a blank page, and it makes the estimate-versus-actual comparison free later.</p>
+
+  <h3>Project state machine</h3>
+  <p>Your own status list, formalised. Note that <code>PLANNING</code> and <code>IN_PROGRESS</code> overlap in reality — see the caveat below.</p>
+
+  <div class="flow wide">
+    <span class="st">QUOTING</span><span class="arw">→</span>
+    <span class="st">CONFIRMED</span><span class="arw">→</span>
+    <span class="st">PLANNING</span><span class="arw">→</span>
+    <span class="st term-wait">MOBILIZING</span><span class="arw">→</span>
+    <span class="st term-ok">IN_PROGRESS</span><span class="arw">→</span>
+    <span class="st">DEMOBILIZING</span><span class="arw">→</span>
+    <span class="st">INVOICING</span><span class="arw">→</span>
+    <span class="st term-ok">CLOSED</span>
+    <span class="br"></span>
+    <span class="arw">any state →</span><span class="st term-no">CANCELLED</span>
+    <span class="arw">·</span><span class="st term-no">ON_HOLD</span>
+  </div>
+
+  <p>I have split <code>MOBILIZING</code> out of planning deliberately: planning is <em>deciding</em> what is needed, mobilizing is <em>waiting for the world</em> to deliver it — visas, flights, shipments. They have completely different management responses, and the pain you described lives entirely in the second one.</p>
+
+  <div class="note risk">
+    <span class="tag">Important — planning never closes</span>
+    <p>Your note that scope creep means <em>"rearrange travels and more people, take confirmations, change travel plans"</em> breaks the naive phase model. A variation raised in week three re-opens manpower, immigration and travel for new people while the project is <code>IN_PROGRESS</code>.</p>
+    <p>So: <strong>phases describe the project's centre of gravity, not a gate.</strong> Readiness dimensions stay live and computable for the whole project lifetime, and the board must be able to show an in-progress project with a red immigration light. Do not build "planning complete" as an irreversible transition.</p>
+  </div>
+</section>
+
+<section id="s5">
+  <span class="sec-num">§ 05 — Entity catalog</span>
+  <h2>The model</h2>
+  <p class="lede">Grouped by domain. Cards with a green edge carry the tracking contract from §6 and therefore appear on boards.</p>
+
+  <div class="dom">
+    <div class="dom-h"><span>A · Commercial</span><em>who, what vessel, for how much</em></div>
+    <div class="ents">
+      <div class="ent"><b>Client</b><p>The shipowner or manager we contract with.</p><div class="f">name · country · contacts[] · default_currency · books_own_travel (bool) · yard_pass_requirements</div></div>
+      <div class="ent"><b>Vessel</b><p>Recurring across projects; carries history.</p><div class="f">name · imo · flag · type · client_id</div></div>
+      <div class="ent trk"><b>Quotation</b><p>Versioned offer. Header + versions.</p><div class="f">client_id · vessel_id · project_type · current_version_id · status · win_loss_reason</div></div>
+      <div class="ent"><b>QuotationVersion</b><p>Immutable snapshot of one issued offer.</p><div class="f">version_no · scope_summary · hull_spec_id · est_headcount_by_role · est_duration_days · proposed_start/end · value · currency · valid_until · attachments[] · sent_at</div></div>
+      <div class="ent trk"><b>Invoice</b><p>Multiple per project, per your note.</p><div class="f">project_id · number · milestone · amount · currency · raised_at · sent_at · due_at · paid_at · status</div></div>
+      <div class="ent trk"><b>Variation</b><p>Scope creep, formalised. May spawn requirements.</p><div class="f">project_id · description · est_cost · est_extra_days · extra_manpower[] · status · client_approved_at</div></div>
+    </div>
+  </div>
+
+  <div class="dom">
+    <div class="dom-h"><span>B · Project core</span><em>the spine everything hangs from</em></div>
+    <div class="ents">
+      <div class="ent trk"><b>Project</b><p>One job, one vessel, one timeline.</p><div class="f">code · client_id · vessel_id · shipyard_id · type · status · planned_start/end · actual_start/end · pm_user_id · currency · hull_spec_id · timezone</div></div>
+      <div class="ent"><b>HullJobSpec</b><p>Condition + paint specification (§3).</p><div class="f">initial_condition · areas[] · area_m2 · prep_standard · paint_system · coats[] · target_dft</div></div>
+      <div class="ent trk"><b>Milestone</b><p>Timeline markers: arrival, dock-in, blast complete, final coat, sea trial.</p><div class="f">project_id · name · planned_date · actual_date · status</div></div>
+      <div class="ent"><b>User</b><p>Admin now; PM / warehouse roles later.</p><div class="f">name · email · role · active</div></div>
+      <div class="ent"><b>ProjectMembership</b><p>Who is attached to a project and in what capacity. Present from day one even though v1 is admin-only.</p><div class="f">project_id · user_id · role</div></div>
+    </div>
+  </div>
+
+  <div class="dom">
+    <div class="dom-h"><span>C · People &amp; mobilization</span><em>where the pain lives</em></div>
+    <div class="ents">
+      <div class="ent"><b>Worker</b><p>Master record. Employee or agency-supplied.</p><div class="f">name · nationality · engagement_type · agency_id · skills[] · certifications[] · home_base · contact</div></div>
+      <div class="ent"><b>WorkerIdentity</b><p>Separated deliberately — restricted PII table (§12).</p><div class="f">worker_id · passport_no · passport_expiry · dob · document_refs[]</div></div>
+      <div class="ent trk"><b>ManpowerRequirement</b><p>"3 blasters from 12 Mar to 2 Apr." Coverage-typed.</p><div class="f">project_id · role · qty_required · qty_assigned · needed_from/to · source (own/agency) · variation_id?</div></div>
+      <div class="ent trk"><b>Assignment</b><p>A slot. May be UNFILLED before a name exists.</p><div class="f">requirement_id · worker_id? · status · on_site_from/to · arrived_at · departed_at</div></div>
+      <div class="ent trk"><b>MobilizationItem</b><p>One clearance for one assignment. The workhorse record.</p><div class="f">assignment_id · kind · status · responsible_party · due_date · valid_from/valid_to · reference_no · cost · blocked_reason · document_id</div></div>
+      <div class="ent"><b>Agency</b><p>Labour supplier.</p><div class="f">name · country · contacts[] · supplies_roles[]</div></div>
+    </div>
+  </div>
+
+  <div class="dom">
+    <div class="dom-h"><span>D · Logistics</span><em>things, and where they are</em></div>
+    <div class="ents">
+      <div class="ent"><b>Warehouse</b><p>Origin of consumables and owned equipment.</p><div class="f">name · country · address · contact</div></div>
+      <div class="ent"><b>Equipment</b><p>Owned or rented asset with a service life.</p><div class="f">asset_tag · name · category · ownership · vendor_id? · current_location · cert_expiry</div></div>
+      <div class="ent trk"><b>EquipmentAllocation</b><p>Equipment committed to a project, with a return destination (§8).</p><div class="f">project_id · equipment_id · qty · required_by · dispatched_at · on_site_at · returned_at · return_destination · condition_on_return</div></div>
+      <div class="ent trk"><b>ConsumableLine</b><p>Required vs shipped vs delivered vs consumed. Coverage-typed.</p><div class="f">project_id · item_id · qty_required · qty_packed · qty_delivered · qty_consumed · uom</div></div>
+      <div class="ent trk"><b>Shipment</b><p>A consignment with a stage and an ETA.</p><div class="f">project_id · origin · destination · mode · stage · dispatched_at · eta · delivered_at · forwarder · awb_no · customs_status</div></div>
+      <div class="ent"><b>Vendor</b><p>Rental, freight, paint supply.</p><div class="f">name · type · country · contacts[]</div></div>
+    </div>
+  </div>
+
+  <div class="dom">
+    <div class="dom-h"><span>E · Execution &amp; cross-cutting</span><em>the daily grind, and the long tail</em></div>
+    <div class="ents">
+      <div class="ent trk"><b>ReportingObligation</b><p>Recurring duty: daily progress report, client report, supervision deliverable.</p><div class="f">project_id · kind · frequency · audience · owner_role · starts/ends</div></div>
+      <div class="ent trk"><b>ObligationLog</b><p>One row per period. Done or missed — nothing more.</p><div class="f">obligation_id · period_date · status · submitted_at · submitted_by · link</div></div>
+      <div class="ent trk"><b>Blocker</b><p>"Bottleneck reporting" from the tracker.</p><div class="f">project_id · category · severity · description · raised_at · impact_days · owner_id · status · resolved_at</div></div>
+      <div class="ent trk"><b>Task</b><p>Layer 3. Polymorphic, nestable, assignable.</p><div class="f">subject_type · subject_id · parent_id · title · status · assignee_id · due_date</div></div>
+      <div class="ent"><b>Document</b><p>Polymorphic attachment with an expiry — feeds the expiry radar.</p><div class="f">subject_type · subject_id · kind · file_ref · issued_at · expires_at · uploaded_by</div></div>
+      <div class="ent"><b>ActivityEvent</b><p>Append-only. Powers the timeline and "what changed today".</p><div class="f">actor_id · verb · subject_type · subject_id · from_status · to_status · note · at</div></div>
+    </div>
+  </div>
+</section>
+<section id="s6">
+  <span class="sec-num">§ 06 — Readiness engine</span>
+  <h2>The contract that makes one board possible</h2>
+  <p class="lede">A visa case, a hotel booking and sixty drums of primer have nothing in common as data. They have everything in common as <em>things that must be true before Tuesday</em>. This section defines the shared shape that lets them share a screen.</p>
+
+  <h3>The tracking contract</h3>
+  <p>Every trackable carries these fields, whatever else it carries. This is the whole trick.</p>
+
+  <div class="scroll wide" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Why it earns its place</th></tr></thead>
+      <tbody>
+        <tr><td>status</td><td class="n">enum</td><td class="n">The traffic light. Vocabulary below — shared across every type, no exceptions.</td></tr>
+        <tr><td>responsible_party</td><td class="n">enum</td><td class="n">US · CLIENT · AGENCY · VENDOR · AUTHORITY · WORKER. Directly from "some clients book the flights themselves". Enables the single most useful filter in the system: <em>show me everything the client owes us</em>.</td></tr>
+        <tr><td>owner_user_id</td><td class="n">fk</td><td class="n">The Abhi / Varsha / PM column from the existing tracker. Gives "my open items" and "who is drowning".</td></tr>
+        <tr><td>due_date</td><td class="n">date</td><td class="n">When it must be done by — usually derived from a lead time before the date it enables.</td></tr>
+        <tr><td>valid_from · valid_to</td><td class="n">date</td><td class="n">Not everything is done-forever. Visas, passes and insurance are <em>windows</em>, and windows can fail to cover the need. See below.</td></tr>
+        <tr><td>qty_required · qty_fulfilled</td><td class="n">numeric</td><td class="n">For coverage-typed items. 40 of 60 drums is a real state that status alone cannot express.</td></tr>
+        <tr><td>blocked_reason</td><td class="n">text</td><td class="n">Mandatory when status is BLOCKED. Turns a red light into an action.</td></tr>
+        <tr><td>evidence_document_id</td><td class="n">fk</td><td class="n">Proof. Prevents the failure mode where someone ticks a box optimistically.</td></tr>
+        <tr><td>external_reference</td><td class="n">text</td><td class="n">Visa file number, PNR, hotel confirmation, AWB. The bridge to the systems we are not replacing.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>One status vocabulary</h3>
+  <div class="scroll wide" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>Status</th><th>Means</th><th>Board treatment</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip c-na">not_applicable</span></td><td class="n">Genuinely not needed — a US worker going to Florida needs no visa.</td><td class="n">Excluded from the denominator. Must be a real recorded state, never a blank.</td></tr>
+        <tr><td><span class="chip c-idle">not_started</span></td><td class="n">Nobody has touched it.</td><td class="n">Grey. Fine at T−60, alarming at T−3.</td></tr>
+        <tr><td><span class="chip c-warn">in_progress</span></td><td class="n">We are actively working it.</td><td class="n">Amber.</td></tr>
+        <tr><td><span class="chip c-wait">awaiting_external</span></td><td class="n">Submitted; we are waiting on an embassy, client, yard or vendor.</td><td class="n">Blue. Distinct on purpose.</td></tr>
+        <tr><td><span class="chip c-crit">blocked</span></td><td class="n">Stuck, with a stated reason.</td><td class="n">Red. Escalation candidate.</td></tr>
+        <tr><td><span class="chip c-crit">rejected</span></td><td class="n">Refused — visa denied, pass declined.</td><td class="n">Red. Usually triggers substitution.</td></tr>
+        <tr><td><span class="chip c-ok">done</span></td><td class="n">Complete, evidence attached.</td><td class="n">Green.</td></tr>
+        <tr><td><span class="chip c-crit">expired</span></td><td class="n">Was done; validity has lapsed.</td><td class="n">Red. Computed, not hand-set.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <span class="tag">Why awaiting_external is not just in_progress</span>
+    <p>In this business, a large share of every project is spent waiting on somebody else. Collapsing "we have not started the visa" and "we filed the visa five weeks ago and the consulate is silent" into one amber light destroys the board's usefulness — the first needs someone to act, the second needs someone to chase. Two different states, two different Monday mornings.</p>
+  </div>
+
+  <h3>Three kinds of dimension</h3>
+  <p>Not every readiness question has the same arithmetic. Conflating them is the mistake the generic-task model makes.</p>
+
+  <div class="scroll wide" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>Kind</th><th>Question it answers</th><th>Rule</th><th>Used by</th></tr></thead>
+      <tbody>
+        <tr><td>Checklist</td><td class="n">Is every required item done?</td><td class="n">All children DONE or N/A</td><td class="n">Immigration, insurance, yard access, PM assignment</td></tr>
+        <tr><td>Coverage</td><td class="n">Do we have enough?</td><td class="n">Σ fulfilled ≥ Σ required</td><td class="n">Manpower, consumables, equipment</td></tr>
+        <tr><td>Window</td><td class="n">Is it valid when we need it?</td><td class="n">valid_from ≤ need_from AND valid_to ≥ need_to</td><td class="n">Visas, work permits, yard passes, insurance, equipment certs</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The window rule is the direct answer to two of your notes — <em>"insurance for travel period"</em> and <em>"shipyard access: people who have access to this much time"</em>. A yard pass valid to 20 March on a project running to 4 April is <strong>not green</strong>, even though someone marked it done. The system should compute that gap and surface it, because nobody will notice it by eye across forty workers.</p>
+
+  <h3>Rollup, worked</h3>
+  <p>Trackables reduce to dimensions; dimensions reduce to a project light. Worst-state-wins, with a completion percentage alongside so a project that is 90% ready and one that is 20% ready do not look identical.</p>
+
+  <div class="roll wide">
+    <div class="band">
+      <div class="bl">Trackables<br>(assignment × kind)</div>
+      <div class="bc">
+        <span class="tick">Ravi · visa <span class="chip c-ok">done</span></span>
+        <span class="tick">Ravi · permit <span class="chip c-wait">awaiting</span></span>
+        <span class="tick">Suresh · visa <span class="chip c-crit">rejected</span></span>
+        <span class="tick">Mateo · visa <span class="chip c-na">n/a</span></span>
+        <span class="tick">Mateo · permit <span class="chip c-na">n/a</span></span>
+        <span class="tick">+9 more</span>
+      </div>
+    </div>
+    <div class="reduce"><div class="rr"><b>reduce →</b> any REJECTED or BLOCKED wins · else any window-gap or EXPIRED wins · else all DONE/NA ⇒ done · else past-due or inside lead time ⇒ at risk · else in progress</div></div>
+    <div class="band">
+      <div class="bl">Dimension</div>
+      <div class="bc"><span class="tick">Immigration <span class="chip c-crit">blocked</span> <span style="color:var(--ink-3)">· 8/12 · 1 rejected</span></span></div>
+    </div>
+    <div class="reduce"><div class="rr"><b>reduce →</b> project light = worst applicable dimension · project % = Σ done weight ÷ Σ applicable weight</div></div>
+    <div class="band">
+      <div class="bl">Project</div>
+      <div class="bc"><span class="tick"><b style="color:var(--ink)">MV Silver Dawn · hull</b> <span class="chip c-crit">blocked</span> <span style="color:var(--ink-3)">· 71% ready · T−6 days</span></span></div>
+    </div>
+  </div>
+
+  <h3>Derived, never stored by hand</h3>
+  <ul>
+    <li><strong>at_risk</strong> — not DONE and <code>due_date</code> falls inside the item's lead time. A visa with a 21-day lead time goes amber 21 days out, not the day it is late.</li>
+    <li><strong>window_gap</strong> — validity fails to cover the required window (above).</li>
+    <li><strong>expired</strong> — <code>valid_to</code> is in the past.</li>
+    <li><strong>coverage_shortfall</strong> — <code>qty_required − qty_fulfilled</code>.</li>
+    <li><strong>days_to_start</strong> — the sort key for the whole portfolio board.</li>
+  </ul>
+
+  <p>Lead times belong to the <em>requirement type per corridor</em>, not to the record — "Indian passport into the US" has a different visa lead time than "Mexican passport into the US". Seed them with the company's own numbers (question 34 in §15) and let admins override per project.</p>
+</section>
+
+<section id="s7">
+  <span class="sec-num">§ 07 — Mobilization model</span>
+  <h2>Getting people to the yard</h2>
+  <p class="lede">One assignment, several clearances, each owned by a possibly different party. This is where the dashboard earns its keep and where the modelling is subtlest.</p>
+
+  <h3>Slots before names</h3>
+  <p>Planning starts before people are chosen — you said as much: "3 plumbers", not "Ravi, Suresh, Mateo". So <code>ManpowerRequirement</code> declares a count and <code>Assignment</code> rows are created as <strong>unfilled slots</strong> against it. A slot can already carry a due date and an owner; when a worker is named, the mobilization items attach to the same slot and nothing is lost.</p>
+
+  <p>This gives the manpower dimension its coverage arithmetic — <em>9 of 12 slots filled</em> — which is a distinct and important failure mode from <em>12 filled, 3 without visas</em>. The board should never conflate them.</p>
+
+  <h3>Which clearances apply</h3>
+  <p>Requirements vary by nationality, destination, client and yard. The eventual answer is a rule matrix:</p>
+  <p><code>(worker_nationality, destination_country, client, shipyard, role) → required MobilizationItem kinds</code></p>
+  <p>For v1 that is over-engineering. Instead: a <strong>mobilization template</strong> per project, defaulted from the destination country and the yard's stored requirements, then edited by the admin. Every generated item exists as a record even when unnecessary — marked <span class="chip c-na">not_applicable</span> — so the matrix is complete and honest rather than sparse and ambiguous. The rule engine can be introduced later behind the same interface.</p>
+
+  <h3>Item kinds and their stages</h3>
+  <div class="scroll wide" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>Kind</th><th>Typical stages beyond the shared status</th><th>Window?</th><th>Usual owner</th></tr></thead>
+      <tbody>
+        <tr><td>VISA</td><td class="n">docs collected → filed → appointment → biometrics → approved → stamped → entered</td><td class="n">yes</td><td class="n">Us / agency / lawyer</td></tr>
+        <tr><td>WORK_PERMIT</td><td class="n">applied → approved → issued</td><td class="n">yes</td><td class="n">Us / client</td></tr>
+        <tr><td>TRAVEL_REQUEST</td><td class="n">raised → approved — <em>the form from your notes, before any booking exists</em></td><td class="n">no</td><td class="n">Us</td></tr>
+        <tr><td>FLIGHT_INBOUND</td><td class="n">requested → booked → ticketed → departed → arrived</td><td class="n">no</td><td class="n">Us <strong>or client</strong></td></tr>
+        <tr><td>FLIGHT_OUTBOUND</td><td class="n">same, planned at demob or up front</td><td class="n">no</td><td class="n">Us / client</td></tr>
+        <tr><td>ACCOMMODATION</td><td class="n">requested → booked → checked in → checked out</td><td class="n">yes</td><td class="n">Us / client</td></tr>
+        <tr><td>GROUND_TRANSPORT</td><td class="n">arranged → confirmed</td><td class="n">no</td><td class="n">Us / client</td></tr>
+        <tr><td>YARD_PASS</td><td class="n">list submitted → under yard review → issued → collected</td><td class="n">yes</td><td class="n">Client / yard</td></tr>
+        <tr><td>INSURANCE</td><td class="n">quoted → bound → certificate issued</td><td class="n">yes</td><td class="n">Us / agency</td></tr>
+        <tr><td>MEDICAL / SAFETY_CERT</td><td class="n">booked → passed → certificate on file</td><td class="n">yes</td><td class="n">Worker / us</td></tr>
+        <tr><td>ARRIVAL_ON_SITE</td><td class="n">the confirmation that closes the chain</td><td class="n">no</td><td class="n">PM</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Kind-specific stages live in <code>details</code> JSONB and drive a small per-kind stepper in the UI, while <code>status</code> stays in the shared vocabulary so the board keeps working. That is the pragmatic compromise: rich detail where a user is looking at one person, uniform status where the system is looking at forty.</p>
+
+  <div class="note">
+    <span class="tag">The client-books-travel case</span>
+    <p>You flagged that some clients book flights and accommodation themselves and hand over tickets. That is not an exception to model around — it is exactly what <code>responsible_party = CLIENT</code> is for. The item still exists, still has a due date, still shows red if the tickets have not arrived by T−7. The difference is only who gets chased. Same for yards issuing passes and agencies arranging insurance.</p>
+  </div>
+
+  <h3>The passport problem</h3>
+  <p>Some clients require the worker list with passport details to issue yard passes. That means this system will hold passport numbers and scans, which changes its risk profile considerably. Design response in §12: identity data lives in a separate restricted table, access is logged, and the client submission is a deliberate <strong>export pack</strong> action that records who exported what, for which yard, and when — rather than passport fields sitting on a screen anyone can browse.</p>
+</section>
+
+<section id="s8">
+  <span class="sec-num">§ 08 — Logistics &amp; custody</span>
+  <h2>Getting things to the yard, and away again</h2>
+  <p class="lede">Two questions, repeatedly: do we have enough, and where is it right now.</p>
+
+  <h3>Requirement → pack → ship → receive</h3>
+  <p>Your note gives the chain exactly: <em>equipment required → packing consumables from warehouse → arrange shipping</em>. Modelled as requirement lines whose fulfilment is driven by shipments:</p>
+
+  <div class="flow wide">
+    <span class="st">REQUESTED</span><span class="arw">→</span><span class="st">ALLOCATED</span><span class="arw">→</span><span class="st">PACKED</span><span class="arw">→</span><span class="st term-wait">DISPATCHED</span><span class="arw">→</span><span class="st term-wait">IN_TRANSIT</span><span class="arw">→</span><span class="st term-wait">CUSTOMS</span><span class="arw">→</span><span class="st term-ok">DELIVERED_TO_YARD</span><span class="arw">→</span><span class="st term-ok">RECEIVED_ON_SITE</span>
+  </div>
+
+  <p><strong>Delivered and received are separate states on purpose.</strong> A consignment sitting at a yard gate that nobody has signed for is a very common and very expensive kind of "arrived". Only the PM's receipt closes the loop.</p>
+
+  <p>Consumables are coverage-typed: <code>qty_required → qty_packed → qty_delivered → qty_consumed</code>. Partial deliveries are the norm, so the board reports <em>"consumables 47/60 lines on site"</em> rather than a binary. This is precisely the question — "have all required consumables reached site?" — that motivated rejecting the pure task model.</p>
+
+  <h3>The warehouse boundary</h3>
+  <div class="note">
+    <span class="tag">Scope decision — confirmed</span>
+    <p>The warehouse is a separate concern. This system will never answer <em>"what is the inventory of warehouse A right now?"</em> — no stock levels, no reorder points, no valuation. It tracks only <strong>what a project needs and whether it arrived</strong>, referencing item codes that live elsewhere. Resist every future request to grow this into an inventory system; that is a different product with a different owner.</p>
+  </div>
+
+  <h3>Equipment custody across projects <span class="chip c-idle" style="vertical-align:middle">low priority</span></h3>
+  <p>Equipment picked from a warehouse is assigned to a project, then either moves on to another project or returns to the warehouse. That chain is worth tracking — it means equipment has a life <strong>between</strong> projects, not just within one — but it is explicitly <strong>not a v1 priority</strong>. Model the fields now so the history is capturable; build the custody views in a later phase (§13).</p>
+  <ul>
+    <li><code>Equipment.current_location</code> is a first-class field: a warehouse, a project site, in transit, or with a rental vendor.</li>
+    <li><code>EquipmentAllocation.return_destination</code> is decided at demob: <code>WAREHOUSE</code>, <code>PROJECT:{id}</code>, or <code>VENDOR</code> for rentals.</li>
+    <li>A transfer to another project creates that project's inbound allocation automatically — so the receiving project's equipment dimension turns green from the transfer, not from a warehouse dispatch that never happens.</li>
+    <li>Rented equipment carries rental start/end and vendor, so an overdue return is a cost that shows up as a red light rather than as a surprise invoice.</li>
+  </ul>
+  <p>Combined with certification expiry on the asset, this also answers "is the equipment we are shipping actually certified for the whole job" — the same window rule from §6, applied to things instead of people.</p>
+  <p><strong>What v1 actually needs</strong> is much smaller: for each project, is the required equipment allocated, dispatched and received on site. The custody chain above is the same records read a different way, so building the simple version first costs nothing later.</p>
+</section>
+<section id="s9">
+  <span class="sec-num">§ 09 — Execution &amp; variations</span>
+  <h2>Once work starts</h2>
+  <p class="lede">The existing tracker lists it plainly: commencement, daily meetings, daily progress report, WhatsApp with client, daily tasks, bottleneck reporting, scope creep, final reports.</p>
+
+  <h3>Obligations, not tasks</h3>
+  <p>A daily progress report is not a task — it is a recurring duty with a period. Modelling it as tasks means generating hundreds of rows and then having no clean way to ask "which projects missed yesterday?".</p>
+  <p>So: <code>ReportingObligation</code> defines the duty (kind, frequency, audience), and <code>ObligationLog</code> holds one row per period with <code>done | missed | not_required</code> plus a link to wherever the report actually lives. Cheap to build, and it produces one of the highest-value screens in the system — a compliance grid of projects × days.</p>
+  <p>The same mechanism covers the supervision project's client reporting, which you described as tracked only as <em>reporting done or not</em>. That is exactly what this is.</p>
+
+  <div class="note">
+    <span class="tag">Timezone</span>
+    <p>"Daily" is ambiguous across a portfolio spanning several countries. Each project carries a <code>timezone</code>, and an obligation period is a <em>local date</em> at the project site. Otherwise the board will report false misses every evening in one hemisphere.</p>
+  </div>
+
+  <h3>WhatsApp</h3>
+  <p>The team lives on WhatsApp with clients, and no dashboard will change that. Do not attempt to ingest or replace it. Track the one fact that matters for visibility — <strong>was the client updated today</strong> — as an obligation like any other, optionally with a pasted link or a one-line note. Anything more ambitious is a phase-3 conversation about a WhatsApp Business API integration, and should not hold up v1.</p>
+
+  <h3>Blockers</h3>
+  <p>"Bottleneck reporting" becomes a first-class <code>Blocker</code>: category (manpower · logistics · client · yard · technical · weather · commercial), severity, impact in days, owner, resolution. Two payoffs — a cross-project blocker feed on the portfolio board, and, after a year, an honest answer to <em>what actually delays our projects</em>. Categorise from day one; retrofitting categories onto free text is impossible.</p>
+
+  <h3>Variations, and the loop back into planning</h3>
+  <p>Scope creep is the most structurally interesting thing in your notes, because it is the one flow that runs <em>backwards</em> through the lifecycle:</p>
+
+  <div class="flow wide">
+    <span class="st">variation identified</span><span class="arw">→</span><span class="st">costed</span><span class="arw">→</span><span class="st term-wait">submitted to client</span><span class="arw">→</span><span class="st term-ok">approved</span><span class="arw">→</span><span class="st">new manpower requirement</span><span class="arw">→</span><span class="st">new assignments</span><span class="arw">→</span><span class="st term-wait">re-open travel &amp; immigration</span><span class="arw">→</span><span class="st">amend existing travel</span>
+  </div>
+
+  <p>Consequences for the design, all of which follow from taking that loop seriously:</p>
+  <ul>
+    <li><code>ManpowerRequirement</code> carries an optional <code>variation_id</code> — so "original scope" and "variation scope" stay distinguishable for both readiness and billing.</li>
+    <li>Mobilization items are generated for late-added assignments with <strong>compressed lead times</strong>, which the at-risk rule will immediately flag red. That is correct and desirable: a worker added three weeks before the end of a project genuinely may not get a visa in time, and the board should say so on day one rather than at the airport.</li>
+    <li>Amending existing travel — your "change travel plans" — needs the original booking preserved. Keep an <code>amendment</code> history on travel items, including change fees, because those are recoverable costs that currently get lost.</li>
+    <li>An approved variation should be able to generate an invoice line. That link is what makes scope creep visible commercially rather than only operationally.</li>
+  </ul>
+
+  <h3>Demobilization</h3>
+  <p>The mirror of mobilization, and routinely forgotten until it is expensive: return flights, hotel checkout, yard pass surrender, equipment return with a destination decision (§8), consumable reconciliation (delivered vs consumed vs returned vs written off), final report, client sign-off. Reuse the same trackable machinery with a demob flag rather than inventing new types.</p>
+</section>
+
+<section id="s10">
+  <span class="sec-num">§ 10 — Commercial</span>
+  <h2>Quote in, invoices out</h2>
+  <p class="lede">Deliberately thin. This is a status tracker sitting beside the finance process, not inside it.</p>
+
+  <h3>Quotation</h3>
+  <p>Covered as a state machine in §4. The content model is intentionally loose: a scope summary, estimated headcount by role, an estimated duration, proposed dates, a value, a validity date, and the actual client-facing file as an attachment. The dashboard displays and tracks; Excel still authors.</p>
+  <p>Two fields worth insisting on despite being optional-feeling: <code>valid_until</code>, so stale quotes expire themselves rather than lingering as fake pipeline; and <code>win_loss_reason</code> as a short enum, because after thirty quotes it answers "why are we losing" for the price of one dropdown.</p>
+
+  <h3>Invoicing</h3>
+  <p>Per your note — <em>multiple invoices per project, sent out versus paid</em>. A flat list per project:</p>
+
+  <div class="flow wide">
+    <span class="st">DRAFT</span><span class="arw">→</span><span class="st">RAISED</span><span class="arw">→</span><span class="st term-wait">SENT</span><span class="arw">→</span><span class="st term-wait">ACKNOWLEDGED</span><span class="arw">→</span><span class="st term-ok">PAID</span>
+    <span class="arw">·</span><span class="st term-no">OVERDUE</span><span class="arw">(derived from due_at)</span><span class="arw">·</span><span class="st term-no">DISPUTED</span>
+  </div>
+
+  <p>Each invoice optionally references a milestone or an approved variation. The project shows invoiced-to-date against value, and the portfolio shows total outstanding and overdue. <strong>No ledger, no tax logic, no payment integration</strong> — those belong to whatever accounting system exists, and this system should link to it, not duplicate it.</p>
+
+  <div class="note">
+    <span class="tag">Deliberately absent</span>
+    <p>Cost tracking against budget is not in v1. It is a natural and valuable extension — every mobilization item already has a <code>cost</code> field, so project cost accumulates for free — but it introduces approval workflows and finance stakeholders that would delay the readiness board. Collect the data now, build the view later. See question 74.</p>
+  </div>
+</section>
+
+<section id="s11">
+  <span class="sec-num">§ 11 — Screens</span>
+  <h2>What people actually open</h2>
+  <p class="lede">Ten screens for v1, listed in order of value. If only the first three shipped, the system would already be worth using.</p>
+
+  <h3>1 · Portfolio readiness board</h3>
+  <p>The reason this project exists. Rows are active projects sorted by days-to-start; columns are the readiness dimensions; every cell is a chip. Filterable by country, PM, client, status. This is the screen the crux quote describes.</p>
+
+  <div class="scroll wide board" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>Project</th><th>Start</th><th>PM</th><th>Manpower</th><th>Immigration</th><th>Travel</th><th>Yard access</th><th>Insurance</th><th>Equipment</th><th>Consumables</th><th>Blockers</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="vs">MV Silver Dawn<small>Hull · Rotterdam</small></td>
+          <td><span class="tminus hot">T−6</span></td><td>Varsha</td>
+          <td><span class="chip c-ok">12/12</span></td><td><span class="chip c-crit">8/12</span></td><td><span class="chip c-warn">10/12</span></td>
+          <td><span class="chip c-wait">submitted</span></td><td><span class="chip c-ok">done</span></td><td><span class="chip c-ok">on site</span></td><td><span class="chip c-warn">47/60</span></td><td><span class="chip c-crit">2</span></td>
+        </tr>
+        <tr>
+          <td class="vs">Beachcomber<small>Hull · Freeport</small></td>
+          <td><span class="tminus hot">T−11</span></td><td>Abhi</td>
+          <td><span class="chip c-warn">9/12</span></td><td><span class="chip c-wait">awaiting</span></td><td><span class="chip c-idle">not started</span></td>
+          <td><span class="chip c-idle">not started</span></td><td><span class="chip c-warn">6/9</span></td><td><span class="chip c-wait">in transit</span></td><td><span class="chip c-wait">dispatched</span></td><td><span class="chip c-idle">0</span></td>
+        </tr>
+        <tr>
+          <td class="vs">NG Endeavour II<small>Supervision · Ushuaia</small></td>
+          <td><span class="tminus">T−24</span></td><td>Varsha</td>
+          <td><span class="chip c-ok">2/2</span></td><td><span class="chip c-ok">done</span></td><td><span class="chip c-ok">done</span></td>
+          <td><span class="chip c-wait">awaiting</span></td><td><span class="chip c-ok">done</span></td><td><span class="chip c-na">n/a</span></td><td><span class="chip c-na">n/a</span></td><td><span class="chip c-idle">0</span></td>
+        </tr>
+        <tr>
+          <td class="vs">Margaritaville<small>Hull · Tampa</small></td>
+          <td><span class="tminus">T−38</span></td><td><span style="color:var(--crit)">unassigned</span></td>
+          <td><span class="chip c-idle">0/16</span></td><td><span class="chip c-idle">not started</span></td><td><span class="chip c-idle">not started</span></td>
+          <td><span class="chip c-idle">not started</span></td><td><span class="chip c-idle">not started</span></td><td><span class="chip c-idle">not started</span></td><td><span class="chip c-idle">not started</span></td><td><span class="chip c-idle">0</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Note what the mock demonstrates: a supervision project honestly showing <span class="chip c-na">n/a</span> rather than a misleading green; coverage counts where coverage is the question; and the unassigned-PM project at T−38 reading as calm-but-empty, which is exactly right.</p>
+
+  <h3>2 · Mobilization matrix</h3>
+  <p>Per project: workers down the side, clearance kinds across the top, one chip per cell, with the unfilled slots shown as rows too. Click a cell for the detail drawer with stages, reference numbers, dates and documents. Row-level and column-level summaries at the edges. This is the screen that answers "is everybody sorted".</p>
+
+  <h3>3 · Start-readiness / T-minus</h3>
+  <p>Every project starting in the next 21 days, with a flat list of everything not yet <span class="chip c-ok">done</span>, grouped by responsible party. Designed to be read top to bottom on a Monday morning and turned directly into phone calls.</p>
+
+  <h3>4 · Project workspace</h3>
+  <p>Header with vessel, client, yard, dates, PM and a readiness strip. Tabs: Overview · Manpower &amp; mobilization · Logistics · Execution · Commercial · Documents · Activity.</p>
+
+  <h3>5 · Logistics board</h3>
+  <p>Shipments as a stage kanban across all projects, plus a per-project coverage table for consumables and equipment.</p>
+
+  <h3>6 · Expiry radar</h3>
+  <p>Everything with a <code>valid_to</code> — visas, permits, passes, insurance, certifications, passports, equipment certs — that expires inside or before its required window, across all projects. Pure derived data, near-zero build cost once §6 exists, catches problems nobody is looking for.</p>
+
+  <h3>7 · Obligations grid</h3>
+  <p>Projects × dates, showing daily reports and client updates as done or missed. Immediately reveals which project has quietly stopped reporting.</p>
+
+  <h3>8 · Quotation pipeline</h3>
+  <p>Kanban by quote status with values and validity countdowns.</p>
+
+  <h3>9 · Blockers &amp; variations feed</h3>
+  <p>Cross-project, sorted by severity and age.</p>
+
+  <h3>10 · Activity log &amp; search</h3>
+  <p>"What changed today" across the portfolio, plus global search over projects, vessels, workers and references.</p>
+
+  <div class="note">
+    <span class="tag">A note on data entry</span>
+    <p>All of this depends on admins keeping status current, which is the real adoption risk (§16). Two mitigations belong in v1: <strong>bulk edit</strong> on the mobilization matrix — select twelve workers, set visa to filed — and <strong>CSV import</strong> for worker lists and consumable lines. If updating twelve visas takes twelve page loads, the spreadsheet wins and the project fails.</p>
+  </div>
+</section>
+<section id="s12">
+  <span class="sec-num">§ 12 — Schema &amp; stack</span>
+  <h2>How it is stored and built</h2>
+  <p class="lede">One structural decision matters more than all the rest: how the tracking contract is physically stored.</p>
+
+  <h3>The storage question</h3>
+  <div class="scroll wide" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>Option</th><th>Upside</th><th>Downside</th></tr></thead>
+      <tbody>
+        <tr><td>Table per type</td><td class="n">Clean typed columns, easy constraints</td><td class="n">Every board becomes a twelve-way UNION; every new requirement kind is a migration and a UI change</td></tr>
+        <tr><td>One generic table</td><td class="n">Boards are one query; new kinds are free</td><td class="n">Weak constraints, everything in JSONB, unqueryable detail</td></tr>
+        <tr><td class="n" style="color:var(--accent);font-weight:600">Hybrid — recommended</td><td class="n">Boards are one query <em>and</em> rich domains keep real columns</td><td class="n">Two places to write on some operations; needs discipline about which fields live where</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>Recommendation: the hybrid.</strong> A single <code>tracked_item</code> table implements the §6 contract for everything, and rich domains keep satellite tables joined one-to-one for the detail that deserves real columns.</p>
+
+  <div class="scroll wide" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>tracked_item</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>id · project_id</td><td class="n">Every trackable belongs to a project — the board's partition key.</td></tr>
+        <tr><td>dimension</td><td class="n">MANPOWER · IMMIGRATION · TRAVEL · YARD_ACCESS · INSURANCE · EQUIPMENT · CONSUMABLES · REPORTING · COMMERCIAL · ADHOC</td></tr>
+        <tr><td>kind</td><td class="n">VISA · FLIGHT_INBOUND · YARD_PASS · CONSUMABLE_LINE …</td></tr>
+        <tr><td>subject_type · subject_id</td><td class="n">Points at the assignment, equipment, consumable line or obligation it concerns.</td></tr>
+        <tr><td>status · responsible_party · owner_user_id</td><td class="n">The contract.</td></tr>
+        <tr><td>due_date · valid_from · valid_to</td><td class="n">Drives at-risk, window-gap and expiry derivation.</td></tr>
+        <tr><td>qty_required · qty_fulfilled</td><td class="n">Coverage-typed items only; null elsewhere.</td></tr>
+        <tr><td>blocked_reason · external_reference · evidence_document_id</td><td class="n">Action, bridge, proof.</td></tr>
+        <tr><td>details</td><td class="n">JSONB — per-kind stages and fields that no board queries.</td></tr>
+        <tr><td>Indexes</td><td class="n">(project_id, dimension, status) · (status, due_date) · (valid_to) · (owner_user_id, status)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Satellite tables for the domains with genuine structure: <code>assignment</code>, <code>shipment</code>, <code>consumable_line</code>, <code>equipment_allocation</code>, <code>obligation_log</code>, <code>invoice</code>. The rule of thumb for which side a field goes on: <strong>if a board filters or sorts on it, it is a column on <code>tracked_item</code>; if only a detail drawer displays it, it is JSONB or a satellite.</strong></p>
+
+  <h3>Rollups</h3>
+  <p>Recompute the project's dimension summary on write, inside the same transaction that changes an item, and store it on a <code>project_readiness</code> row. The portfolio board then reads one small table with no aggregation at all. A nightly job recomputes everything anyway, because date-derived states (at-risk, expired) change without any write occurring — that job, not user activity, is what keeps the board honest over a quiet weekend.</p>
+
+  <h3>Personal data</h3>
+  <div class="note risk">
+    <span class="tag">Treat this as a real constraint, not a checkbox</span>
+    <p>The system holds passport numbers, scans, visa documents and medical certificates for foreign nationals across multiple jurisdictions. Minimum design response for v1:</p>
+    <ul>
+      <li><code>worker_identity</code> is a separate table with its own access path — never joined into list views by default.</li>
+      <li>Document files live in private object storage behind short-lived signed URLs. Never a public bucket.</li>
+      <li>Every read of identity data and every export writes an <code>ActivityEvent</code>. When a client asks who sent their yard a passport list, the answer exists.</li>
+      <li>Sharing with a client or yard is an explicit <strong>export pack</strong> action — choose recipient, choose fields, log it — not a copy-paste from a screen.</li>
+      <li>A retention policy field per document kind, and a job that flags identity documents for deletion N days after project close. Ask the company for N (question 77).</li>
+    </ul>
+  </div>
+
+  <h3>Stack</h3>
+  <div class="scroll wide" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>Layer</th><th>Choice</th><th>Reasoning</th></tr></thead>
+      <tbody>
+        <tr><td>Database</td><td class="n">Postgres</td><td class="n">Relational core with JSONB for the flexible edges — exactly this shape of problem. Managed (Neon / Supabase / RDS).</td></tr>
+        <tr><td>App</td><td class="n">Next.js + TypeScript, server actions</td><td class="n">One deployable, fast to build, and the whole product is forms and tables.</td></tr>
+        <tr><td>ORM</td><td class="n">Drizzle or Prisma</td><td class="n">Either is fine; Drizzle if the hybrid schema means hand-written aggregate queries, which it will.</td></tr>
+        <tr><td>Tables/grids</td><td class="n">TanStack Table</td><td class="n">The matrices are the product. Bulk selection, sticky columns, virtualisation.</td></tr>
+        <tr><td>UI</td><td class="n">shadcn/ui + Tailwind</td><td class="n">Unopinionated enough not to fight a dense operational layout.</td></tr>
+        <tr><td>Auth</td><td class="n">Managed provider, email or Google</td><td class="n">Roles modelled from day one even though v1 exposes only <code>admin</code>.</td></tr>
+        <tr><td>Files</td><td class="n">S3-compatible, private, signed URLs</td><td class="n">See the PII note.</td></tr>
+        <tr><td>Jobs</td><td class="n">One nightly cron + on-write recompute</td><td class="n">Resist a queue until something actually needs one.</td></tr>
+        <tr><td>Import/export</td><td class="n">CSV in, XLSX out, from every board</td><td class="n">Non-negotiable. Excel is not going away and pretending otherwise loses adoption.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s13">
+  <span class="sec-num">§ 13 — Delivery phases</span>
+  <h2>What to build, in what order</h2>
+  <p class="lede">Sequenced so the crux screen ships first and everything after it is additive.</p>
+
+  <div class="scroll wide" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>Phase</th><th>Contents</th><th>Proves</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>P0 · Skeleton</td><td class="n">Clients, vessels, shipyards, users, workers, agencies. Auth. Project CRUD with the §4 state machine.</td>
+          <td class="n">The nouns are right.</td>
+        </tr>
+        <tr>
+          <td>P1 · Readiness core</td><td class="n"><strong>The point of the whole exercise.</strong> Manpower requirements with slots · assignments · mobilization items across all kinds · the §6 contract and rollup · mobilization matrix · portfolio board · T-minus view.</td>
+          <td class="n">The crux question is answerable in one screen. Ship, then get real projects into it before building anything else.</td>
+        </tr>
+        <tr>
+          <td>P2 · Logistics &amp; quotes</td><td class="n">Consumable lines and coverage · shipments with stages · simple equipment allocation (allocated → dispatched → on site → returned) · quotation pipeline with versions and conversion into manpower rows.</td>
+          <td class="n">The board covers things as well as people, and jobs enter the system at the front.</td>
+        </tr>
+        <tr>
+          <td>P3 · Execution</td><td class="n">Reporting obligations and the grid · blockers · variations with the loop back into planning · tasks and checklists · documents and the expiry radar · milestones.</td>
+          <td class="n">The system stays useful after commencement, not just before it.</td>
+        </tr>
+        <tr>
+          <td>P4 · Closeout</td><td class="n">Demobilization · consumable reconciliation · equipment custody chain and transfers between projects · invoice tracking.</td>
+          <td class="n">A project can be finished inside the system. Includes the equipment lifecycle you flagged as low priority.</td>
+        </tr>
+        <tr>
+          <td>P5 · Beyond admin</td><td class="n">PM and warehouse roles with scoped permissions · email or WhatsApp digests · the requirement rule matrix · mobile-friendly PM views · cost against budget.</td>
+          <td class="n">Data entry stops being one person's job.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <span class="tag">Sequencing advice</span>
+    <p>P1 is the whole bet. Everything before it is scaffolding and everything after is expansion. Get two or three <em>real</em> upcoming projects loaded into P1 and watch what the admins do with it for a fortnight before committing to P2's shape — the first contact with real data will change more of this document than any further design work will.</p>
+  </div>
+</section>
+<section id="s14">
+  <span class="sec-num">§ 14 — Decisions for you</span>
+  <h2>Calls to make before writing code</h2>
+  <p class="lede">These are yours, not the company's — they do not depend on any answer from the client. Each carries my recommendation so none of them blocks you.</p>
+
+  <div class="wide">
+    <div class="dec"><div class="dq">Are workers first-class records in v1, or just headcounts?</div><p class="da"><em>Recommend</em> first-class. Immigration, travel, insurance and yard passes are all <strong>per person</strong> — modelling only "3 plumbers" makes the crux screen impossible to build. Unfilled slots (§7) let planning start before names exist, so you get both.</p></div>
+
+    <div class="dec"><div class="dq">One <code>tracked_item</code> table, or a table per requirement type?</div><p class="da"><em>Recommend</em> the hybrid in §12. Pure per-type tables make every board a painful union; pure generic makes the detail views mush.</p></div>
+
+    <div class="dec"><div class="dq">Rule engine for which clearances apply, or an editable per-project template?</div><p class="da"><em>Recommend</em> template now, rules later. The nationality × destination matrix is real but you cannot populate it accurately without months of the company's data. A defaulted, admin-editable list gets you there with a tenth of the work and no wrong answers.</p></div>
+
+    <div class="dec"><div class="dq">Host documents, or link out to Drive?</div><p class="da"><em>Recommend</em> links first, uploads for identity documents only. They already live in Drive or email; forcing a re-upload of everything is adoption friction. Passports and visas are the exception — those need the controlled path in §12.</p></div>
+
+    <div class="dec"><div class="dq">Rollups computed on read or on write?</div><p class="da"><em>Recommend</em> on write into a summary table, plus a nightly recompute for date-derived states. Portfolio-wide aggregation on read will be fine at 20 projects and unpleasant at 200, and the nightly job is needed regardless.</p></div>
+
+    <div class="dec"><div class="dq">How much timeline? Full Gantt with dependencies?</div><p class="da"><em>Recommend</em> no. Milestones plus phase bars. A dependency-aware Gantt is a product in itself, and the pain being solved is readiness, not scheduling. Revisit only if they ask for it after using P1.</p></div>
+
+    <div class="dec"><div class="dq">Does the project timeline drive mobilization dates automatically?</div><p class="da"><em>Recommend</em> yes, as defaults only. Derive each item's <code>due_date</code> from the project start minus a lead time, and let admins override. Auto-derived-and-locked will be wrong constantly; entirely manual will simply never get filled in.</p></div>
+
+    <div class="dec"><div class="dq">Roles in v1, when only admins use it?</div><p class="da"><em>Recommend</em> model <code>role</code> and <code>project_membership</code> now, expose only <code>admin</code>. Retrofitting authorisation onto a system built assuming everyone sees everything is one of the more expensive refactors available, and PM access is clearly coming.</p></div>
+
+    <div class="dec"><div class="dq">Multi-tenant?</div><p class="da"><em>Recommend</em> no. One company. Do not pay the multi-tenancy tax for a hypothetical.</p></div>
+
+    <div class="dec"><div class="dq">Audit log from day one?</div><p class="da"><em>Recommend</em> yes, non-negotiable. This replaces a shared spreadsheet where everyone could see who changed what. Losing that visibility while asking people to trust a new system is how these rollouts die. <code>ActivityEvent</code> is one table and a write hook.</p></div>
+
+    <div class="dec"><div class="dq">Where does the paint specification live?</div><p class="da"><em>Recommend</em> structured fields, not an attachment (§3). Even in v1 where nothing computes from it, structure now is what lets consumable quantities derive from it later.</p></div>
+
+    <div class="dec"><div class="dq">Currency handling?</div><p class="da"><em>Recommend</em> store amount + currency, display natively, add a reporting rate only if they ask for a consolidated figure. No FX tables in v1.</p></div>
+
+    <div class="dec"><div class="dq">Notifications in v1?</div><p class="da"><em>Recommend</em> defer, with one exception worth considering: a daily digest email of at-risk and blocked items. It is cheap, and it drives people back into the tool, which is the main adoption risk.</p></div>
+
+    <div class="dec"><div class="dq">Seed data strategy?</div><p class="da"><em>Recommend</em> load two or three real past projects during P1, not synthetic data. Real projects will expose modelling gaps that invented ones politely hide.</p></div>
+  </div>
+</section>
+
+<section id="s15">
+  <span class="sec-num">§ 15 — Questions for the company</span>
+  <div class="hazard" role="presentation"></div>
+  <h2>What to ask Parkk Marine</h2>
+  <p class="lede">Seventy-eight questions, grouped so they can be split across several conversations. The bolded ones are the ones that would change the design if answered unexpectedly — ask those first.</p>
+
+  <div class="qg wide">
+    <h3><span class="gl">A</span> <span>Business shape &amp; the crux</span></h3>
+    <p>Establishes scale and confirms we are building the right screen.</p>
+    <ol start="1">
+      <li><b>If you could open one screen every morning and it answered one question, what would the question be?</b> (We believe it is "what is not ready for the projects starting soonest" — we want to hear it in your words.)</li>
+      <li>How many projects run concurrently today, and how many per year? What is the typical duration, and the longest and shortest you have run?</li>
+      <li>How many workers on a typical project? On the largest you have done?</li>
+      <li>Which countries and shipyards recur most? Are there yards you work with repeatedly whose rules we should store?</li>
+      <li>What is the split between hull jobs and supervision jobs? Are there other kinds of work we have not accounted for — emergency call-outs, warranty work, dry-dock management, riding squads?</li>
+      <li>Who exactly will use this in the first six months, by name and role, and on what device? Is anyone expected to use it from a shipyard?</li>
+      <li><b>What lives in spreadsheets and Drive today that must move into this system, and what must deliberately stay outside it?</b></li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">B</span> <span>Quotation &amp; winning work</span></h3>
+    <ol start="8">
+      <li>Who prepares a quote, in what tool, and how long does it take?</li>
+      <li>What actually goes into a quote — scope items, headcount by trade, day rates, equipment, materials, travel, margin?</li>
+      <li>Do you want the estimate figures stored here for comparison against actuals, or is attaching the file enough?</li>
+      <li>How many revision rounds are typical? Do you ever need to compare two versions side by side?</li>
+      <li>What is the gap between "client accepted" and "confirmed"? Is there a PO, a contract, an LOI, or is a WhatsApp message enough?</li>
+      <li>How firm are the dates in a quote? How often do start dates move after confirmation, and by how much?</li>
+      <li>Do you quote in multiple currencies? Who decides the rate?</li>
+      <li>Would you use win/loss reasons if we captured them — and what would the four or five options be?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">C</span> <span>Hull job technical scope</span></h3>
+    <p>The area we know least about, and the one that drives materials.</p>
+    <ol start="16">
+      <li><b>Walk us through how a hull job is scoped: who inspects, what the initial condition report contains, and what form it arrives in.</b></li>
+      <li>What does a paint specification consist of, and who issues it — you, the client, or the paint manufacturer?</li>
+      <li>Which areas are typically quoted separately — flat bottom, vertical sides, boot-top, topsides, tanks, superstructure?</li>
+      <li>Do you work to standard surface preparation grades, and do you need those recorded per area?</li>
+      <li>Do you calculate paint quantities from area, coats and spreading rate? If we held the spec as structured data, would you want the consumables list derived from it?</li>
+      <li>What inspection and QA happens during the job — DFT readings, holiday testing, client or manufacturer sign-off? Does any of it need tracking here?</li>
+      <li>How is steel repair scoped and measured — by weight, by plate, by area — and does it get quoted separately from painting?</li>
+      <li>For supervision jobs, what exactly are you supervising and what is the contractual deliverable?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">D</span> <span>Confirmation &amp; planning handover</span></h3>
+    <ol start="24">
+      <li><b>What is the typical lead time between confirmation and start date? What is the shortest you have ever had to work with?</b></li>
+      <li>Is there a formal handover from whoever sold the job to the project manager? What gets handed over?</li>
+      <li>Say out loud the checklist you run through in your head before a project starts. We want the version you actually use, not the tidy one.</li>
+      <li>Which planning items strictly block others? (For instance, must a visa be approved before a yard pass can be applied for?)</li>
+      <li>The owner column in your current tracker shows Abhi, Varsha and project managers. Is that split fixed, or does it vary by project?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">E</span> <span>Manpower &amp; sourcing</span></h3>
+    <ol start="29">
+      <li><b>Are workers your employees, agency-contracted, or a mix? Does the paperwork differ between them, and who is responsible for what in each case?</b></li>
+      <li>Do you keep a master list of workers with their skills, or is a team assembled fresh each time?</li>
+      <li>What trades should be in the standard list, and do you track certification levels within a trade — welder qualifications, blasting tickets, confined-space entry?</li>
+      <li>How far in advance do you name specific people, versus planning with headcounts?</li>
+      <li>Do people move directly from one project to the next? Would you want the system to warn you about double-booking someone?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">F</span> <span>Immigration &amp; work permits</span></h3>
+    <ol start="34">
+      <li><b>For your common nationality-to-country routes, what are the realistic lead times?</b> These become the early-warning thresholds, so rough numbers per route are more useful to us than precision.</li>
+      <li>Which routes are reliably painful, and which are effectively formalities?</li>
+      <li>What stages would you want to see for a visa application? We have proposed: documents collected → filed → appointment → biometrics → approved → stamped → entered country. Is that right, and is one set of stages enough across all countries?</li>
+      <li>Who files — you, the agency, an immigration lawyer, or the client? Do you need to record their reference numbers?</li>
+      <li>Do work permits and visas ever expire mid-project? Do you handle extensions, and would you want them tracked?</li>
+      <li>What happens when an application is refused? Is there a standard fallback, and how quickly can you substitute someone?</li>
+      <li>Are there routes where people travel on business visas, or arrangements you would rather the system recorded discreetly?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">G</span> <span>Travel &amp; accommodation</span></h3>
+    <ol start="41">
+      <li><b>Who books flights — you, the client, or the agency? How often does that vary, and is it agreed per project or per client?</b></li>
+      <li>You mentioned a travel request form. What is on it, who raises it, and who approves it?</li>
+      <li>Do you need flight detail stored — routes, dates, PNR — or is "booked / not booked" plus a ticket attachment enough?</li>
+      <li>Accommodation: hotels, company apartments, or yard-provided? Do you track room allocation and cost, or just that it is arranged?</li>
+      <li>Is ground transport between hotel and yard something you arrange and would want tracked?</li>
+      <li>How do you currently confirm someone has actually arrived on site, and who reports it?</li>
+      <li>Are return flights booked up front or arranged at the end? How often do they change, and who absorbs the change fees?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">H</span> <span>Shipyard access</span></h3>
+    <ol start="48">
+      <li><b>What does a yard typically demand before issuing passes — passport copies, photographs, safety training certificates, medical fitness, drug tests, insurance proof? How much does it vary between yards?</b></li>
+      <li>How far ahead must the worker list be submitted, and how long does approval take?</li>
+      <li>Are passes issued per person with fixed validity dates? What happens if a project overruns its passes?</li>
+      <li>How are late crew changes and substitutions handled once a list has been submitted?</li>
+      <li>Do yards or clients have their own submission format? If we could export it in their format, would that save real time?</li>
+      <li>Are vehicle passes, tool passes or hot-work permits also needed, and are they per project or per person?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">I</span> <span>Insurance &amp; certification</span></h3>
+    <ol start="54">
+      <li>Which policies apply — travel, medical, workers' compensation, liability, P&amp;I? Which are per worker and which per project?</li>
+      <li>Who arranges each — you, the agency, or the client?</li>
+      <li>You mentioned caveats. What kinds of exclusions matter in practice — geographic limits, hot-work exclusions, age limits — and would you want them visible per worker?</li>
+      <li>Must coverage span the travel period, the working period, or both? Has a gap ever caused a problem?</li>
+      <li>Which certifications expire and must stay valid for the whole project — medical fitness, safety training, trade tickets?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">J</span> <span>Logistics, equipment &amp; consumables</span></h3>
+    <ol start="59">
+      <li>How many warehouses, and where? Is there an existing system holding stock, or is it spreadsheets?</li>
+      <li>Is there a standard materials list per job type that we could hold as a template, or is every job assembled from scratch?</li>
+      <li>How do you decide between shipping owned equipment and renting locally? Who makes that call and when?</li>
+      <li>Which shipment stages do you actually care about? We have proposed requested → packed → dispatched → in transit → customs → delivered to yard → received on site.</li>
+      <li>Who handles freight and customs? Do you need their references and ETAs visible here?</li>
+      <li>Does equipment carry certifications that expire and must be valid for the project duration?</li>
+      <li>What happens to leftover consumables — returned, left on site, written off? Is consumption billable to the client?</li>
+      <li>Partial deliveries: how common, and how do you currently know whether everything has arrived?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">K</span> <span>Execution, reporting &amp; change</span></h3>
+    <ol start="67">
+      <li>What is in a daily progress report, who writes it, and who reads it? Does the client get the same one you use internally?</li>
+      <li>For supervision jobs, what is the reporting deliverable and its cadence, and what counts as it being done?</li>
+      <li><b>How is scope creep handled commercially today — a formal variation order, a verbal agreement, or absorbed?</b> And how often does it require extra people and new travel?</li>
+      <li>What counts as a bottleneck worth logging? Who is meant to resolve them, and how are they escalated today?</li>
+      <li>You track WhatsApp contact with the client. Would a simple "client updated today" flag be enough, or do you need the conversation itself somewhere?</li>
+      <li>Are safety incidents and near-misses recorded anywhere, and should they be here?</li>
+      <li>What formally ends a project — a client sign-off document, a final report, the last invoice?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">L</span> <span>Commercial</span></h3>
+    <ol start="74">
+      <li><b>Do you want project cost tracked against the quoted value, or only status?</b> If yes, which costs matter most — labour, travel, materials, equipment?</li>
+      <li>How is invoicing structured — milestones, monthly, on completion? Is there retention or holdback?</li>
+      <li>Who chases payment, and would seeing outstanding invoices on the project board be useful to them?</li>
+    </ol>
+  </div>
+
+  <div class="qg wide">
+    <h3><span class="gl">M</span> <span>Data, access &amp; success</span></h3>
+    <ol start="77">
+      <li><b>Who is allowed to see passport and personal data, and how long may we keep documents after a project closes?</b> Are there client contracts or national rules that constrain this?</li>
+      <li>What other systems exist that this should link to or import from — accounting, HR, email, Drive? And, finally: what would make you say, a year from now, that this dashboard failed?</li>
+    </ol>
+  </div>
+</section>
+
+<section id="s16">
+  <span class="sec-num">§ 16 — Assumptions &amp; risks</span>
+  <h2>What this design is standing on</h2>
+
+  <h3>Assumptions made in the absence of answers</h3>
+  <ul>
+    <li>Order of magnitude: tens of concurrent projects, tens of workers each, hundreds of trackable items per project. Nothing here needs to scale past that, and several choices would be different if it did.</li>
+    <li>Admins enter data manually; there are no integrations to pull status in automatically.</li>
+    <li>English throughout, one company, no white-labelling.</li>
+    <li>Documents are modest in number and size — scans and PDFs, not video.</li>
+    <li>The company is willing to keep a system current daily. If that is not true, no design choice rescues it.</li>
+  </ul>
+
+  <h3>Risks worth naming now</h3>
+  <div class="scroll wide" style="margin:1.25rem 0">
+    <table>
+      <thead><tr><th>Risk</th><th>Why it matters</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Data entry burden</td><td class="n">The single most likely cause of failure. A board is only as honest as its last update, and admins already have jobs.</td><td class="n">Bulk edit everywhere · CSV import · defaults from templates · derive dates rather than asking · digest emails that pull people back in.</td></tr>
+        <tr><td>Excel gravity</td><td class="n">They will keep using spreadsheets in parallel, and the dashboard will drift out of date.</td><td class="n">Export every board to XLSX so the dashboard becomes the <em>source</em> of the spreadsheet rather than its competitor.</td></tr>
+        <tr><td>Over-modelling</td><td class="n">This document already describes more than v1 should contain.</td><td class="n">Phase discipline (§13). P1 only, then look at reality.</td></tr>
+        <tr><td>Under-modelling status</td><td class="n">If statuses collapse into "in progress", the board stops being actionable.</td><td class="n">The §6 vocabulary, especially keeping <code>awaiting_external</code> separate.</td></tr>
+        <tr><td>PII exposure</td><td class="n">Passports for foreign nationals across jurisdictions, shared onward to clients.</td><td class="n">§12 — separated table, signed URLs, logged exports, retention policy.</td></tr>
+        <tr><td>Requirement variability</td><td class="n">Every yard and country wants something slightly different.</td><td class="n">Templates plus the Layer 3 checklist escape hatch (§2).</td></tr>
+        <tr><td>Single-admin bottleneck</td><td class="n">Admin-only scope means one or two people hold the whole system's accuracy.</td><td class="n">Model roles from day one so PM entry can be opened up as soon as it is wanted.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr>
+  <p style="font-family:var(--mono);font-size:.72rem;color:var(--ink-3);line-height:1.7">Draft v0.1 · open for review · the §15 answers are expected to change §3, §7 and §13 materially. Nothing here should be treated as settled until two real projects have been run through P1.</p>
+</section>
+
+</main>
+</div>

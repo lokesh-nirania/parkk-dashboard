@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Parkk readiness — theme.
+
+   One rule holds the whole design together: status colour is the only
+   saturated thing on screen. Everything structural is neutral, so when a cell
+   goes red it means something. Nothing else is allowed to compete with it.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --bg:            #fafaf9;
+  --surface:       #ffffff;
+  --surface-2:     #f5f5f4;
+  --border:        #e7e5e4;
+  --border-strong: #d6d3d1;
+  --text:          #1c1917;
+  --text-muted:    #78716c;
+  --text-faint:    #a8a29e;
+  --accent:        #1d4ed8;
+  --accent-soft:   #eff6ff;
+
+  --st-done:        #059669;
+  --st-done-bg:     #ecfdf5;
+  --st-progress:    #d97706;
+  --st-progress-bg: #fffbeb;
+  --st-awaiting:    #2563eb;
+  --st-awaiting-bg: #eff6ff;
+  --st-notstarted:  #78716c;
+  --st-notstarted-bg:#f5f5f4;
+  --st-blocked:     #dc2626;
+  --st-blocked-bg:  #fef2f2;
+  --st-na:          #d6d3d1;
+  --st-na-bg:       transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:            #0c0c0d;
+    --surface:       #141416;
+    --surface-2:     #1b1b1e;
+    --border:        #27272a;
+    --border-strong: #3f3f46;
+    --text:          #ededec;
+    --text-muted:    #9a9a95;
+    --text-faint:    #6b6b66;
+    --accent:        #60a5fa;
+    --accent-soft:   #16243d;
+
+    --st-done:        #34d399;
+    --st-done-bg:     #06251c;
+    --st-progress:    #fbbf24;
+    --st-progress-bg: #2a1e05;
+    --st-awaiting:    #60a5fa;
+    --st-awaiting-bg: #101f38;
+    --st-notstarted:  #a1a1aa;
+    --st-notstarted-bg:#232326;
+    --st-blocked:     #f87171;
+    --st-blocked-bg:  #2d1113;
+    --st-na:          #3f3f46;
+    --st-na-bg:       transparent;
+  }
+}
+
+@theme inline {
+  --color-bg:            var(--bg);
+  --color-surface:       var(--surface);
+  --color-surface-2:     var(--surface-2);
+  --color-line:          var(--border);
+  --color-line-strong:   var(--border-strong);
+  --color-ink:           var(--text);
+  --color-muted:         var(--text-muted);
+  --color-faint:         var(--text-faint);
+  --color-accent:        var(--accent);
+  --color-accent-soft:   var(--accent-soft);
+  --font-sans:           var(--font-geist-sans);
+  --font-mono:           var(--font-geist-mono);
+}
+
+html { color-scheme: light dark; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Status is expressed three ways so it never depends on colour alone:
+   the dot, the label text, and the tint. Colour-blind and projector safe. */
+.st-done       { --c: var(--st-done);       --c-bg: var(--st-done-bg); }
+.st-in_progress{ --c: var(--st-progress);   --c-bg: var(--st-progress-bg); }
+.st-awaiting_external { --c: var(--st-awaiting); --c-bg: var(--st-awaiting-bg); }
+.st-not_started{ --c: var(--st-notstarted); --c-bg: var(--st-notstarted-bg); }
+.st-blocked    { --c: var(--st-blocked);    --c-bg: var(--st-blocked-bg); }
+.st-n_a        { --c: var(--st-na);         --c-bg: var(--st-na-bg); }
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 6px;
+  border: 3px solid var(--bg);
+}
