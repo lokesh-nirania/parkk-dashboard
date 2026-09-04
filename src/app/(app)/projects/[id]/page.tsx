@@ -1,25 +1,25 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import {
-  OPTIONAL_KITS, OWNER_LABEL, STATUS_LABEL,
   PROJECT_TYPE_LABEL, TERMINAL,
   type BoardRow, type ChangeEvent, type NamedRef, type Person, type ScheduleEvent,
   type Seat, type StagePeriod, type Substage, type Task, type Worker,
 } from '@/lib/types';
 import {
-  PageHeader, StatusDot, TMinus, Stat, Meter, Chip, Warn, Empty,
-  ProjectStatusChip, QueryError, fmtDate, daysUntil,
+  PageHeader, TMinus, Stat, Chip, Warn, Empty,
+  ProjectStatusChip, QueryError,
 } from '@/components/ui';
-import { StatusSelect } from '@/components/status-select';
 import { EventDetail, EventVerb } from '@/components/trail';
 import { SchedulePanel } from '@/components/schedule-panel';
 import { StageRail } from '@/components/stage-rail';
 import { GateButton, CancelButton } from '@/components/gate-button';
 import { EditProjectButton } from '@/components/project-details';
 import { ManagerPicker, RemoveManagerButton } from '@/components/managers';
-import { AddSubstageButton, AddTaskButton, EditTaskButton, SubstageOwnerSelect } from '@/components/planning';
-import { AddSeatsButton, FillSeatButton, KitToggle, ReleaseSeatButton } from '@/components/crew';
+import { AddSubstageButton } from '@/components/planning';
+import { AddSeatsButton } from '@/components/crew';
+import { PlanningPanel } from '@/components/planning-panel';
+import { CrewPanel } from '@/components/crew-panel';
+import { TaskTable } from '@/components/task-table';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,13 +99,9 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const pastManagers = managers.filter((m) => m.removed_at !== null);
 
   const liveSeats = seats.filter((s) => s.is_live);
-  const releasedSeats = seats.filter((s) => !s.is_live);
   // Managers are assignable to a seat like anybody else — a manager who goes
   // out needs the same permit, bed and pass as the blaster beside them.
   const goers = people.filter((pp) => pp.role === 'manager' || pp.role === 'admin');
-
-  const active = subs.find((s) => s.id === sub) ?? null;
-  const shown = active ? tasks.filter((t) => t.substage_id === active.id) : tasks;
 
   const live = tasks.filter((t) => t.is_live);
   const blocked = live.filter((t) => t.status === 'blocked').length;
@@ -268,52 +264,18 @@ export default async function ProjectPage({ params, searchParams }: Props) {
             <AddSubstageButton projectId={p.id} people={people} />
           </div>
 
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {subs.map((s) => {
-              const isActive = active?.id === s.id;
-              return (
-                <div
-                  key={s.id}
-                  className={`rounded-lg border bg-surface p-3 ${
-                    isActive ? 'border-line-strong' : 'border-line'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <Link
-                      href={isActive ? `/projects/${p.id}` : `/projects/${p.id}?sub=${s.id}`}
-                      className="group flex items-center gap-1.5 text-[12px] font-medium text-ink"
-                    >
-                      <StatusDot status={s.effective_status} />
-                      <span className="underline-offset-2 group-hover:underline">{s.title}</span>
-                    </Link>
-                    <span className="tabular shrink-0 text-[11px] text-muted">
-                      {s.total === 0 ? 'empty' : `${s.done}/${s.total}`}
-                    </span>
-                  </div>
-
-                  <div className="mt-2.5"><Meter done={s.done} total={s.total} status={s.effective_status} /></div>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-faint">
-                    {s.is_derived ? (
-                      <span>{STATUS_LABEL[s.effective_status]}</span>
-                    ) : (
-                      // Nothing beneath it yet, so it is still settable by hand —
-                      // which is how a workstream that does not apply gets closed.
-                      <StatusSelect itemId={s.id} status={s.status} kind="substage" />
-                    )}
-                    {s.expiry_gaps > 0 && <Warn>{s.expiry_gaps} expiring</Warn>}
-                    {s.overdue > 0 && <Warn>{s.overdue} overdue</Warn>}
-                  </div>
-
-                  <div className="mt-2.5 flex items-center justify-between gap-2">
-                    <SubstageOwnerSelect substage={s} people={people} />
-                    {s.unit === 'tasks' && <AddTaskButton substage={s} seats={seatOptions} />}
-                    {s.unit === 'seats' && <AddSeatsButton projectId={p.id} />}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <PlanningPanel
+            projectId={p.id}
+            subs={subs}
+            tasks={tasks}
+            seats={seats}
+            people={people}
+            workers={workers}
+            managers={goers}
+            seatOptions={seatOptions}
+            projectEndDate={p.end_date}
+            initialSub={sub}
+          />
         </section>
       ) : (
         <section className="rounded-lg border border-dashed border-line-strong bg-surface px-6 py-10 text-center">
@@ -351,77 +313,13 @@ export default async function ProjectPage({ params, searchParams }: Props) {
             <AddSeatsButton projectId={p.id} />
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-line bg-surface">
-            <table className="w-full min-w-[720px] border-collapse text-[13px]">
-              <thead>
-                <tr className="border-b border-line text-left">
-                  {['Seat', 'Who', 'Trade', 'Mobilises', 'Needs', 'Obligations', ''].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...liveSeats, ...releasedSeats].map((s) => {
-                  const mine = tasks.filter((t) => t.assignment_id === s.id);
-                  const open = mine.filter((t) => t.status !== 'done' && t.status !== 'n_a').length;
-                  const released = !s.is_live;
-                  const isManager = s.occupant_kind === 'manager';
-                  const href = isManager ? '/managers' : `/crew/${s.occupant_id}`;
-
-                  return (
-                    <tr key={s.id} className={`border-b border-line last:border-0 ${released ? 'opacity-55' : ''}`}>
-                      <td className="tabular px-4 py-2.5 text-muted">{s.seat_no}</td>
-                      <td className="px-4 py-2.5">
-                        {s.occupant_name ? (
-                          <span className="flex flex-wrap items-center gap-1.5">
-                            <Link href={href} className="font-medium text-ink underline-offset-2 hover:underline">
-                              {s.occupant_name}
-                            </Link>
-                            {isManager && <Chip title="One of ours, going out on the job">ours</Chip>}
-                          </span>
-                        ) : (
-                          <span className="text-faint">unfilled</span>
-                        )}
-                        {released && (
-                          <div className="mt-0.5 text-[11px] text-faint">
-                            off {stamp(s.released_at!)} — {s.release_reason}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-muted">{s.trade}</td>
-                      <td className="whitespace-nowrap px-4 py-2.5 text-muted">{fmtDate(s.mobilize_on)}</td>
-                      {/* What this seat needs for this job. Travel is not here:
-                          everybody who goes gets a flight, a bed and a transfer. */}
-                      <td className="px-4 py-2.5">
-                        {!s.is_filled ? (
-                          <span className="text-faint">—</span>
-                        ) : (
-                          <span className="flex flex-wrap items-center gap-1">
-                            {OPTIONAL_KITS.map((k) => (
-                              released
-                                ? <span key={k.key} className={`text-[10px] ${s.waived_substages.includes(k.key) ? 'text-faint line-through' : 'text-muted'}`}>{k.label}</span>
-                                : <KitToggle key={k.key} seat={s} kitKey={k.key} label={k.label} />
-                            ))}
-                          </span>
-                        )}
-                      </td>
-                      <td className="tabular px-4 py-2.5 text-muted">
-                        {mine.length === 0 ? '—' : released ? `${mine.length} on file` : `${mine.length - open}/${mine.length}`}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {!released && (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <FillSeatButton seat={s} workers={workers} managers={goers} />
-                            <ReleaseSeatButton seat={s} name={s.occupant_name ?? `Seat ${s.seat_no}`} />
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <CrewPanel
+            seats={seats}
+            tasks={tasks}
+            workers={workers}
+            managers={goers}
+            projectEndDate={p.end_date}
+          />
         </section>
       )}
 
@@ -430,77 +328,20 @@ export default async function ProjectPage({ params, searchParams }: Props) {
         <section>
           <div className="mb-2.5 flex items-center justify-between">
             <h2 className="text-[13px] font-semibold text-ink">
-              {active ? active.title : 'All tasks'}
-              <span className="ml-1.5 tabular font-normal text-faint">{shown.length}</span>
+              All tasks
+              <span className="ml-1.5 tabular font-normal text-faint">{tasks.length}</span>
             </h2>
-            {active && (
-              <Link href={`/projects/${p.id}`} className="text-[12px] text-muted hover:text-ink">
-                Clear filter
-              </Link>
-            )}
+            <p className="text-[12px] text-faint">
+              Everything on the job at once. A workstream on its own is a click above.
+            </p>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-line bg-surface">
-            <table className="w-full min-w-[860px] border-collapse text-[13px]">
-              <thead>
-                <tr className="border-b border-line text-left">
-                  {['Subject', 'Task', 'Status', 'Chase', 'Needed by', 'Valid to', 'Note', ''].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {shown.length === 0 && (
-                  <tr><td colSpan={8}><Empty>
-                    Nothing here yet. Add a task from the workstream above, or fill a seat —
-                    a new crew member arrives with their own obligations.
-                  </Empty></td></tr>
-                )}
-
-                {shown.map((t) => (
-                  <tr key={t.id}
-                      className={`border-b border-line align-top last:border-0 hover:bg-surface-2 ${
-                        t.is_live ? '' : 'opacity-55'
-                      }`}>
-                    <td className="px-4 py-2.5">
-                      <span className={t.subject ? 'font-medium text-ink' : 'text-muted'}>
-                        {t.subject ?? '—'}
-                      </span>
-                      {!active && (
-                        <div className="mt-0.5 text-[11px] text-faint">{t.substage_title}</div>
-                      )}
-                      {!t.is_live && <div className="mt-0.5 text-[11px] text-faint">off the job</div>}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted">
-                      {t.title}
-                      {t.qty_required !== null && (
-                        <span className="tabular ml-1.5 text-faint">{t.qty_done ?? 0}/{t.qty_required}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5"><StatusSelect itemId={t.id} status={t.status} /></td>
-                    <td className="px-4 py-2.5"><Chip>{OWNER_LABEL[t.owner_party]}</Chip></td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-muted">
-                      {fmtDate(t.due_date)}
-                      {t.is_overdue && <div className="mt-0.5"><Warn>overdue</Warn></div>}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-muted">
-                      {fmtDate(t.valid_to)}
-                      {t.has_expiry_gap && (
-                        <div className="mt-0.5">
-                          <Warn>{Math.abs((daysUntil(t.valid_to) ?? 0) - (daysUntil(p.end_date) ?? 0))}d short</Warn>
-                        </div>
-                      )}
-                    </td>
-                    <td className="max-w-[300px] px-4 py-2.5 text-[12px] leading-relaxed text-faint">
-                      {t.note ?? ''}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      {t.is_live && <EditTaskButton task={t} />}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="rounded-lg border border-line bg-surface">
+            <TaskTable
+              tasks={tasks}
+              projectEndDate={p.end_date}
+              empty="Nothing here yet. Open a workstream above to add a task, or fill a seat — a new crew member arrives with their own obligations."
+            />
           </div>
 
           {gaps > 0 && (
